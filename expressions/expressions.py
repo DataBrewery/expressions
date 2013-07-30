@@ -251,6 +251,10 @@ class _StringReader(object):
             # TODO: treat escaped characters
             if token_type == STRING:
                 token = token[1:-1]
+            elif token_type == INTEGER:
+                token = int(token)
+            elif token_type == FLOAT:
+                token = float(token)
 
             tokens.append(Token(token_type, token))
 
@@ -407,4 +411,24 @@ class Expression(object):
             if self.stack and self.stack[-1].type == FUNCTION:
                 self.output.append(self.stack.pop())
 
+    def compile(self, compiler):
+        stack = []
+        for token in self.output:
+            if token.type == LITERAL:
+                value = compiler.compile_literal(token.value)
+            elif token.type == VARIABLE:
+                value = compiler.compile_variable(token.value)
+            elif token.type == OPERATOR:
+                op2 = stack.pop()
+                op1 = stack.pop()
 
+                value = compiler.compile_operator(token.value, op1, op2)
+            else:
+                raise RuntimeError("Unknown token type %s" % repr(token.type))
+
+            stack.append(value)
+
+        if len(stack) != 1:
+            raise RuntimeError("Stack has %s items, should have 1" % len(stack))
+
+        return stack[-1]
