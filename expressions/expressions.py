@@ -266,7 +266,6 @@ class _StringReader(object):
         return tokens
 
 
-Token = namedtuple('Token', ["type", "value"])
 
 def tokenize(string):
     """Parses the string and returns list of tokens."""
@@ -285,6 +284,8 @@ def tokenize(string):
 UNARY = 1
 BINARY = 2
 
+Token = namedtuple('Token', ["type", "value"])
+Element = namedtuple('Element', ["type", "value", "argc"])
 Operator = namedtuple("Operator", ["name", "precedence", "type"])
 
 optable = (
@@ -339,9 +340,13 @@ class Expression(object):
         values is their priority."""
 
         # Shunting-yard algorithm
+        # Variable function arguments:
+        # http://www.kallisti.net.nz/blog/2008/02/extension-to-the-shunting-yard-algorithm-to-allow-variable-numbers-of-arguments-to-functions/
 
         self.stack = []
         self.output = []
+        self.were_values = []
+        self.argc = []
 
         for i, token in enumerate(self.tokens):
             # The next_token is used only to identify whether identifier is a
@@ -352,7 +357,7 @@ class Expression(object):
                 if token.type == IDENTIFIER and next_token.type == LPAREN:
                     token = Token(FUNCTION, token.value)
 
-            self.parse_token(token)
+            self._parse_token(token)
 
         while(self.stack):
             token = self.stack.pop()
@@ -360,22 +365,38 @@ class Expression(object):
                 raise SyntaxError("Missing right parethesis")
             self.output.append(token)
 
-    def parse_token(self, token):
+    def _parse_token(self, token):
 
         if token.type in LITERALS:
-            self.output.append( Token(LITERAL, token.value) )
+            self.output.append(Element(LITERAL, token.value, 0))
+
+            if self.were_values:
+                self.were_values[-1] = True
 
         elif token.type == IDENTIFIER:
-            self.output.append( Token(VARIABLE, token.value) )
+            self.output.append(Element(VARIABLE, token.value, 0))
+
+            if self.were_values:
+                self.were_values[-1] = True
 
         elif token.type == FUNCTION:
-            self.stack.append( Token(FUNCTION, token.value) )
+            self.stack.append(Element(FUNCTION, token.value, 0))
+            self.argc.append(0)
+
+            if self.were_values:
+                self.were_values[-1] = True
+            self.were_values.append(False)
 
         elif token.type == COMMA:
             while(self.stack):
                 if self.stack[-1].type == LPAREN:
                     break
                 self.output.append(self.stack.pop())
+
+            if self.were_values.pop():
+                # Increase argument count
+                self.argc.append(self.argc.pop() + 1)
+            self.were_values.append(False)
 
         elif token.type == OPERATOR:
             while(self.stack):
@@ -395,10 +416,10 @@ class Expression(object):
 
                 self.output.append(self.stack.pop())
 
-            self.stack.append(Token(OPERATOR, token.value))
+            self.stack.append(Element(OPERATOR, token.value, 2))
 
         elif token.type == LPAREN:
-            self.stack.append( Token(LPAREN, '(') )
+            self.stack.append(Element(LPAREN, '(', 0))
 
         elif token.type == RPAREN:
             while(self.stack):
@@ -409,20 +430,36 @@ class Expression(object):
             # pop the left parenthesis
             self.stack.pop()
             if self.stack and self.stack[-1].type == FUNCTION:
-                self.output.append(self.stack.pop())
+                func = self.stack.pop()
+                argc = self.argc.pop()
+                if self.were_values.pop():
+                    argc += 1
+
+                self.output.append(Element(FUNCTION, func.value, argc))
 
     def compile(self, compiler):
         stack = []
         for token in self.output:
             if token.type == LITERAL:
                 value = compiler.compile_literal(token.value)
+
             elif token.type == VARIABLE:
                 value = compiler.compile_variable(token.value)
+
             elif token.type == OPERATOR:
                 op2 = stack.pop()
                 op1 = stack.pop()
 
                 value = compiler.compile_operator(token.value, op1, op2)
+
+            elif token.type == FUNCTION:
+                if token.argc:
+                    args = stack[-token.argc:]
+                else:
+                    args = []
+
+                value = complier.compile_function(token.value, args)
+
             else:
                 raise RuntimeError("Unknown token type %s" % repr(token.type))
 
@@ -432,3 +469,4 @@ class Expression(object):
             raise RuntimeError("Stack has %s items, should have 1" % len(stack))
 
         return stack[-1]
+
