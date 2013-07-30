@@ -1,32 +1,32 @@
 import unittest
 from expression import *
 
-class ParserTestCase(unittest.TestCase):
-    def test_parse_empty(self):
-        tokens = parse("")
+class tokenizerTestCase(unittest.TestCase):
+    def test_tokenize_empty(self):
+        tokens = tokenize("")
         self.assertEqual(0, len(tokens))
 
-    def test_parse_whitespaces(self):
-        tokens = parse(" \n ")
+    def test_tokenize_whitespaces(self):
+        tokens = tokenize(" \n ")
         self.assertEqual(0, len(tokens))
 
-        tokens = parse("100")
+        tokens = tokenize("100")
         self.assertEqual(1, len(tokens))
 
-        tokens = parse("  100")
+        tokens = tokenize("  100")
         self.assertEqual(1, len(tokens))
 
-        tokens = parse("100  ")
+        tokens = tokenize("100  ")
         self.assertEqual(1, len(tokens))
 
-        tokens = parse("  100  ")
+        tokens = tokenize("  100  ")
         self.assertEqual(1, len(tokens))
 
-        tokens = parse("  1 + 1  ")
+        tokens = tokenize("  1 + 1  ")
         self.assertEqual(3, len(tokens))
 
     def assertFirstToken(self, string, expvalue, exptype, length=None):
-        tokens = parse(string)
+        tokens = tokenize(string)
         if length != None:
             self.assertEqual(length, len(tokens))
         value, ttype = tokens[0]
@@ -34,7 +34,7 @@ class ParserTestCase(unittest.TestCase):
         self.assertEqual(ttype, exptype)
 
     def assertTokens(self, string, expvalues, exptypes, length=None):
-        tokens = parse(string)
+        tokens = tokenize(string)
         if length != None:
             self.assertEqual(length, len(tokens))
         values = list(token[0] for token in tokens)
@@ -48,7 +48,7 @@ class ParserTestCase(unittest.TestCase):
         self.assertFirstToken(" 100 ", "100", TINTEGER)
 
         with self.assertRaises(SyntaxError):
-            parse("10a")
+            tokenize("10a")
 
     def test_operators(self):
         self.assertFirstToken("+", "+", TOPERATOR, 1)
@@ -76,13 +76,13 @@ class ParserTestCase(unittest.TestCase):
         self.assertFirstToken(" 1.2-", "1.2", TFLOAT, 2)
 
         with self.assertRaises(SyntaxError):
-            parse("10.a")
+            tokenize("10.a")
 
         with self.assertRaises(SyntaxError):
-            parse("10ea")
+            tokenize("10ea")
 
         with self.assertRaises(SyntaxError):
-            parse("10e*")
+            tokenize("10e*")
 
     def test_single(self):
         self.assertFirstToken("(", "(", TLPAR, 1)
@@ -117,7 +117,7 @@ class ParserTestCase(unittest.TestCase):
 
         self.assertFirstToken('"quote \\""', 'quote \\"', TSTRING)
         with self.assertRaises(SyntaxError):
-            parse("'not good")
+            tokenize("'not good")
 
         with self.assertRaises(SyntaxError):
-            parse("'not good\"")
+            tokenize("'not good\"")

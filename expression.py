@@ -4,6 +4,7 @@ import unicodedata
 from collections import namedtuple
 
 __all__ = (
+            "tokenize",
             "parse",
 
             "TINTEGER",
@@ -180,7 +181,7 @@ class _StringReader(object):
         if not self and self.char != quote:
             raise SyntaxError("Missing string end quote")
 
-    def parse(self):
+    def tokenize(self):
         """Parse the string and return tokens. This is one-time method."""
 
         tokens = []
@@ -256,16 +257,19 @@ class _StringReader(object):
 
 Token = namedtuple('Token', ["value", "type"])
 
-def parse(string):
+def tokenize(string):
     """Parses the string and returns list of tokens."""
     tokens = []
 
     reader = _StringReader(string)
 
     try:
-        tokens = reader.parse()
+        tokens = reader.tokenize()
     except SyntaxError as e:
         raise SyntaxError("Syntax error at %s: %s" % (reader.pos, str(e)))
 
     return tokens
+
+def parse(string):
+    pass
 
