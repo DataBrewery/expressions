@@ -21,6 +21,8 @@ setup(
         'Topic :: Utilities'
     ],
 
+    test_suite = "tests",
+
     # metadata for upload to PyPI
     author = "Stefan Urbanek",
     author_email = "stefan.urbanek@gmail.com",

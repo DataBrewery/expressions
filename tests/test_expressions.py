@@ -1,5 +1,5 @@
 import unittest
-from expression import *
+from expressions import *
 
 class TokenizerTestCase(unittest.TestCase):
     def test_tokenize_empty(self):
