@@ -1,7 +1,7 @@
 import unittest
 from expression import *
 
-class tokenizerTestCase(unittest.TestCase):
+class TokenizerTestCase(unittest.TestCase):
     def test_tokenize_empty(self):
         tokens = tokenize("")
         self.assertEqual(0, len(tokens))
@@ -29,7 +29,8 @@ class tokenizerTestCase(unittest.TestCase):
         tokens = tokenize(string)
         if length != None:
             self.assertEqual(length, len(tokens))
-        value, ttype = tokens[0]
+        value = tokens[0].value
+        ttype = tokens[0].type
         self.assertEqual(value, expvalue)
         self.assertEqual(ttype, exptype)
 
@@ -37,43 +38,43 @@ class tokenizerTestCase(unittest.TestCase):
         tokens = tokenize(string)
         if length != None:
             self.assertEqual(length, len(tokens))
-        values = list(token[0] for token in tokens)
-        types = list(token[1] for token in tokens)
+        values = list(token.value for token in tokens)
+        types = list(token.type for token in tokens)
         self.assertSequenceEqual(values, expvalues)
         self.assertSequenceEqual(types, exptypes)
 
     def test_integers(self):
-        self.assertFirstToken("100", "100", TINTEGER)
-        self.assertFirstToken("100 ", "100", TINTEGER)
-        self.assertFirstToken(" 100 ", "100", TINTEGER)
+        self.assertFirstToken("100", "100", INTEGER)
+        self.assertFirstToken("100 ", "100", INTEGER)
+        self.assertFirstToken(" 100 ", "100", INTEGER)
 
         with self.assertRaises(SyntaxError):
             tokenize("10a")
 
     def test_operators(self):
-        self.assertFirstToken("+", "+", TOPERATOR, 1)
-        self.assertFirstToken("!=", "!=", TOPERATOR, 1)
-        self.assertFirstToken("==", "==", TOPERATOR, 1)
-        self.assertFirstToken("===", "==", TOPERATOR, 2)
-        self.assertFirstToken("+*", "+", TOPERATOR, 2)
+        self.assertFirstToken("+", "+", OPERATOR, 1)
+        self.assertFirstToken("!=", "!=", OPERATOR, 1)
+        self.assertFirstToken("==", "==", OPERATOR, 1)
+        self.assertFirstToken("===", "==", OPERATOR, 2)
+        self.assertFirstToken("+*", "+", OPERATOR, 2)
 
     def test_identifier(self):
-        self.assertFirstToken("parsley", "parsley", TIDENTIFIER, 1)
-        self.assertFirstToken("_sage_10", "_sage_10", TIDENTIFIER, 1)
-        self.assertFirstToken("rozmarín", "rozmarín", TIDENTIFIER, 1)
+        self.assertFirstToken("parsley", "parsley", IDENTIFIER, 1)
+        self.assertFirstToken("_sage_10", "_sage_10", IDENTIFIER, 1)
+        self.assertFirstToken("rozmarín", "rozmarín", IDENTIFIER, 1)
 
     def test_float(self):
-        self.assertFirstToken("10.", "10.", TFLOAT, 1)
-        self.assertFirstToken("10.20", "10.20", TFLOAT, 1)
-        self.assertFirstToken("  10.", "10.", TFLOAT, 1)
+        self.assertFirstToken("10.", "10.", FLOAT, 1)
+        self.assertFirstToken("10.20", "10.20", FLOAT, 1)
+        self.assertFirstToken("  10.", "10.", FLOAT, 1)
 
-        self.assertFirstToken("10e20", "10e20", TFLOAT, 1)
-        self.assertFirstToken("10.e30", "10.e30", TFLOAT, 1)
-        self.assertFirstToken("10.20e30", "10.20e30", TFLOAT, 1)
-        self.assertFirstToken("10.20e-30", "10.20e-30", TFLOAT, 1)
-        self.assertFirstToken(" 1.2e-3 ", "1.2e-3", TFLOAT, 1)
-        self.assertFirstToken(" 1.2e-3-", "1.2e-3", TFLOAT, 2)
-        self.assertFirstToken(" 1.2-", "1.2", TFLOAT, 2)
+        self.assertFirstToken("10e20", "10e20", FLOAT, 1)
+        self.assertFirstToken("10.e30", "10.e30", FLOAT, 1)
+        self.assertFirstToken("10.20e30", "10.20e30", FLOAT, 1)
+        self.assertFirstToken("10.20e-30", "10.20e-30", FLOAT, 1)
+        self.assertFirstToken(" 1.2e-3 ", "1.2e-3", FLOAT, 1)
+        self.assertFirstToken(" 1.2e-3-", "1.2e-3", FLOAT, 2)
+        self.assertFirstToken(" 1.2-", "1.2", FLOAT, 2)
 
         with self.assertRaises(SyntaxError):
             tokenize("10.a")
@@ -85,39 +86,110 @@ class tokenizerTestCase(unittest.TestCase):
             tokenize("10e*")
 
     def test_single(self):
-        self.assertFirstToken("(", "(", TLPAR, 1)
-        self.assertFirstToken("(1", "(", TLPAR, 2)
-        self.assertFirstToken("((", "(", TLPAR, 2)
-        self.assertFirstToken(")", ")", TRPAR, 1)
-        self.assertFirstToken(")1", ")", TRPAR, 2)
-        self.assertFirstToken(")(", ")", TRPAR, 2)
+        self.assertFirstToken("(", "(", LPAREN, 1)
+        self.assertFirstToken("(1", "(", LPAREN, 2)
+        self.assertFirstToken("((", "(", LPAREN, 2)
+        self.assertFirstToken(")", ")", RPAREN, 1)
+        self.assertFirstToken(")1", ")", RPAREN, 2)
+        self.assertFirstToken(")(", ")", RPAREN, 2)
 
-        self.assertFirstToken("[", "[", TLBRACKET)
-        self.assertFirstToken("[]", "[", TLBRACKET, 2)
-        self.assertFirstToken("]", "]", TRBRACKET)
-        self.assertFirstToken(",", ",", TCOMMA)
-        self.assertFirstToken(";", ";", TSEMICOLON)
-        self.assertFirstToken(":", ":", TCOLON)
+        self.assertFirstToken("[", "[", LBRACKET)
+        self.assertFirstToken("[]", "[", LBRACKET, 2)
+        self.assertFirstToken("]", "]", RBRACKET)
+        self.assertFirstToken(",", ",", COMMA)
+        self.assertFirstToken(";", ";", SEMICOLON)
+        self.assertFirstToken(":", ":", COLON)
 
     def test_mix(self):
-        self.assertTokens("100+", ["100", "+"], [TINTEGER, TOPERATOR], 2)
-        self.assertTokens("+sage", ["+", "sage"], [TOPERATOR, TIDENTIFIER], 2)
-        self.assertTokens("sage+", ["sage", "+"], [TIDENTIFIER, TOPERATOR], 2)
+        self.assertTokens("100+", ["100", "+"], [INTEGER, OPERATOR], 2)
+        self.assertTokens("+sage", ["+", "sage"], [OPERATOR, IDENTIFIER], 2)
+        self.assertTokens("sage+", ["sage", "+"], [IDENTIFIER, OPERATOR], 2)
         self.assertTokens("10 - parsley+sage2 != _rosemary",
                           ["10", "-", "parsley", "+", "sage2", "!=", "_rosemary"],
-                          [TINTEGER, TOPERATOR, TIDENTIFIER, TOPERATOR,
-                              TIDENTIFIER, TOPERATOR, TIDENTIFIER], 7)
+                          [INTEGER, OPERATOR, IDENTIFIER, OPERATOR,
+                              IDENTIFIER, OPERATOR, IDENTIFIER], 7)
 
     def test_string(self):
-        self.assertFirstToken("'thyme'", "thyme", TSTRING)
-        self.assertFirstToken('"thyme"', "thyme", TSTRING)
+        self.assertFirstToken("'thyme'", "thyme", STRING)
+        self.assertFirstToken('"thyme"', "thyme", STRING)
 
-        self.assertFirstToken("'parsley rosemary'", "parsley rosemary", TSTRING)
-        self.assertFirstToken('"parsley rosemary"', "parsley rosemary", TSTRING)
+        self.assertFirstToken("'parsley rosemary'", "parsley rosemary", STRING)
+        self.assertFirstToken('"parsley rosemary"', "parsley rosemary", STRING)
 
-        self.assertFirstToken('"quote \\""', 'quote \\"', TSTRING)
+        self.assertFirstToken('"quote \\""', 'quote \\"', STRING)
         with self.assertRaises(SyntaxError):
             tokenize("'not good")
 
         with self.assertRaises(SyntaxError):
             tokenize("'not good\"")
+
+class ExpressionTestCase(unittest.TestCase):
+    def assertTokens(self, string, expvalues, exptypes, length=None):
+        e = Expression(string)
+        tokens = e.output
+
+        if length != None:
+            self.assertEqual(length, len(tokens))
+
+        values = list(token.value for token in tokens)
+        types = list(token.type for token in tokens)
+
+        self.assertSequenceEqual(values, expvalues)
+        self.assertSequenceEqual(types, exptypes)
+
+    def test_basic(self):
+        e = Expression("1")
+        self.assertEqual(1, len(e.output))
+
+        e = Expression("1 + 1")
+        self.assertEqual(3, len(e.output))
+
+        self.assertTokens("1+1", ["1", "1", "+"], [LITERAL, LITERAL, OPERATOR])
+
+    def test_precedence(self):
+
+        self.assertTokens("1+2+3",
+                          ["1", "2", "+", "3", "+"],
+                          [LITERAL, LITERAL, OPERATOR, LITERAL, OPERATOR])
+
+        self.assertTokens("1*2+3",
+                          ["1", "2", "*", "3", "+"],
+                          [LITERAL, LITERAL, OPERATOR, LITERAL, OPERATOR])
+
+        self.assertTokens("1+2*3",
+                          ["1", "2", "3", "*", "+"],
+                          [LITERAL, LITERAL, LITERAL, OPERATOR, OPERATOR])
+
+    def test_parens(self):
+
+        self.assertTokens("(1)",
+                            ["1"],
+                            [LITERAL])
+
+        self.assertTokens("(1+1)",
+                            ["1", "1", "+"],
+                            [LITERAL, LITERAL, OPERATOR])
+
+        self.assertTokens("(1+2)*3",
+                          ["1", "2", "+", "3", "*"],
+                          [LITERAL, LITERAL, OPERATOR, LITERAL, OPERATOR])
+
+    def test_function_call(self):
+
+        self.assertTokens("f(1)",
+                          ["1", "f"],
+                          [LITERAL, FUNCTION])
+
+        self.assertTokens("f(1, 2, 3)",
+                          ["1", "2", "3", "f"],
+                          [LITERAL, LITERAL, LITERAL, FUNCTION])
+
+        self.assertTokens("f(1+2, 3)",
+                          ["1", "2", "+", "3", "f"],
+                          [LITERAL, LITERAL, OPERATOR, LITERAL, FUNCTION])
+
+    def test_identifier_and_fun(self):
+
+        self.assertTokens("f(g)",
+                          ["g", "f"],
+                          [VARIABLE, FUNCTION])
