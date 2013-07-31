@@ -1,4 +1,4 @@
-expressions
+Expressions
 ===========
 
 Lightweight arithmetic expression parser for creating simple arithmetic
@@ -10,6 +10,9 @@ Sources
 -------
 
 Github: https://github.com/Stiivi/expressions
+
+Requires at least Python 3.3. No other dependencies. No dependencies planned –
+Python-only framework.
 
 Use
 ---
