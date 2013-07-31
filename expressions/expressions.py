@@ -3,6 +3,10 @@
 import unicodedata
 from collections import namedtuple
 
+class ExpressionError(Exception):
+    """Raised by the expression compiler"""
+    pass
+
 __all__ = (
             "tokenize",
             "Expression",
@@ -60,7 +64,7 @@ SUBCAT_MATH = 'm'
 
 OPERATOR_CHARS = '+-*/!=<>%?|~'
 IDENTIFIER_START_CHARS = '_' # TODO: add @
-COMPOSED_OPERATORS = ( "!=", "==", "<=", ">=" )
+COMPOSED_OPERATORS = ( "!=", "==", "<=", ">=", "&&", "||", "**" )
 STRING_ESCAPE_CHAR = '\\'
 
 class _StringReader(object):
@@ -266,7 +270,6 @@ class _StringReader(object):
         return tokens
 
 
-
 def tokenize(string):
     """Parses the string and returns list of tokens."""
     tokens = []
@@ -284,38 +287,42 @@ def tokenize(string):
 UNARY = 1
 BINARY = 2
 
+RIGHT = 1
+LEFT = 2
+
 Token = namedtuple('Token', ["type", "value"])
 Element = namedtuple('Element', ["type", "value", "argc"])
-Operator = namedtuple("Operator", ["name", "precedence", "type"])
+Operator = namedtuple("Operator", ["name", "precedence", "assoc", "type"])
 
 optable = (
-    Operator("**", 1000, BINARY),
-    Operator("*", 900, BINARY),
-    Operator("/", 900, BINARY),
-    Operator("%", 900, BINARY),
+    Operator("**", 1000, RIGHT, BINARY),
+    Operator("^",  1000, RIGHT, BINARY),
+    Operator("*",   900, LEFT, BINARY),
+    Operator("/",   900, LEFT, BINARY),
+    Operator("%",   900, LEFT, BINARY),
 
-    Operator("+", 500, BINARY),
-    Operator("-", 500, UNARY | BINARY),
+    Operator("+",   500, LEFT, BINARY),
+    Operator("-",   500, LEFT, UNARY | BINARY),
 
-    Operator("&", 300, UNARY),
-    Operator("^", 300, BINARY),
-    Operator("|", 300, BINARY),
+    Operator("&",   300, LEFT, BINARY),
+    Operator("^",   300, LEFT, BINARY),
+    Operator("|",   300, LEFT, BINARY),
 
-    Operator("<", 200, BINARY),
-    Operator("<=", 200, BINARY),
-    Operator(">", 200, BINARY),
-    Operator(">=", 200, BINARY),
-    Operator("!=", 200, BINARY),
-    Operator("==", 200, BINARY),
-    Operator("in", 200, BINARY),
-    Operator("is", 200, BINARY),
-    Operator("not in", 200, BINARY),
-    Operator("is not", 200, BINARY),
+    Operator("<",   200, LEFT, BINARY),
+    Operator("<=",  200, LEFT, BINARY),
+    Operator(">",   200, LEFT, BINARY),
+    Operator(">=",  200, LEFT, BINARY),
+    Operator("!=",  200, LEFT, BINARY),
+    Operator("==",  200, LEFT, BINARY),
+    Operator("in",  200, LEFT, BINARY),
+    Operator("is",  200, LEFT, BINARY),
+    Operator("not in", 200, LEFT, BINARY),
+    Operator("is not", 200, LEFT, BINARY),
 
-    Operator("not", 120, UNARY),
+    Operator("not", 120, LEFT, UNARY),
 
-    Operator("and", 110, BINARY),
-    Operator("or", 100, BINARY),
+    Operator("and", 110, LEFT, BINARY),
+    Operator("or",  100, LEFT, BINARY),
 )
 
 class Expression(object):
@@ -359,26 +366,39 @@ class Expression(object):
 
             self._parse_token(token)
 
+        # ... When there are no more tokens to read:
+        # While there are still operator tokens in the stack:
         while(self.stack):
             token = self.stack.pop()
+
+            # If the operator token on the top of the stack is a parenthesis,
+            # then there are mismatched parentheses.
             if token.type == RPAREN:
                 raise SyntaxError("Missing right parethesis")
+
+            # Pop the operator onto the output queue.
             self.output.append(token)
 
     def _parse_token(self, token):
 
+        # Shunting-yard algorithm:
+        #         http://en.wikipedia.org/wiki/Shunting-yard_algorithm
+
+        # If the token is a number, then add it to the output queue.
         if token.type in LITERALS:
             self.output.append(Element(LITERAL, token.value, 0))
 
             if self.were_values:
                 self.were_values[-1] = True
 
+        # ... same situation as above
         elif token.type == IDENTIFIER:
             self.output.append(Element(VARIABLE, token.value, 0))
 
             if self.were_values:
                 self.were_values[-1] = True
 
+        # If the token is a function token, then push it onto the stack.
         elif token.type == FUNCTION:
             self.stack.append(Element(FUNCTION, token.value, 0))
             self.argc.append(0)
@@ -387,7 +407,12 @@ class Expression(object):
                 self.were_values[-1] = True
             self.were_values.append(False)
 
+        # If the token is a function argument separator (e.g., a comma):
         elif token.type == COMMA:
+            # Until the token at the top of the stack is a left parenthesis,
+            # pop operators off the stack onto the output queue. If no left
+            # parentheses are encountered, either the separator was misplaced
+            # or parentheses were mismatched.
             while(self.stack):
                 if self.stack[-1].type == LPAREN:
                     break
@@ -398,37 +423,56 @@ class Expression(object):
                 self.argc.append(self.argc.pop() + 1)
             self.were_values.append(False)
 
+        # If the token is an operator, o1, then:
         elif token.type == OPERATOR:
-            while(self.stack):
-                op2 = self.stack[-1]
-                if op2.type != OPERATOR:
-                    break
+            op1 = self.operators[token.value]
 
-                p1 = self.precedence[token.value]
-                p2 = self.precedence[op2.value]
+            if op1.type == UNARY:
+                self.stack.push(Element(OPERATOR, token.value, 1))
 
-                # TODO: store this in the operator info, for the time being we
-                # assume all operators to be left associative
-                is_lassoc = True
+            else:
+                # while there is an operator token, o2, at the top of the
+                # stack, and either o1 is left-associative and its precedence
+                # is equal to that of o2, or o1 has precedence less than that
+                # of o2, pop o2 off the stack, onto the output queue;
 
-                if not ((is_lassoc and p1 == p2) or p1 < p2):
-                    break
+                while(self.stack):
+                    token2 = self.stack[-1]
+                    if token2.type != OPERATOR:
+                        break
+                    op2 = self.operators[token2.value]
 
-                self.output.append(self.stack.pop())
+                    p1 = self.precedence[op1.name]
+                    p2 = self.precedence[op2.name]
 
-            self.stack.append(Element(OPERATOR, token.value, 2))
+                    is_lassoc = op1.assoc == LEFT
+                    if not ((is_lassoc and p1 == p2) or p1 < p2):
+                        break
 
+                    # push o1 onto the stack.
+                    self.output.append(self.stack.pop())
+
+                self.stack.append(Element(OPERATOR, token.value, 2))
+
+        # If the token is a left parenthesis, then push it onto the stack.
         elif token.type == LPAREN:
             self.stack.append(Element(LPAREN, '(', 0))
 
+        # If the token is a right parenthesis:
         elif token.type == RPAREN:
+            # Until the token at the top of the stack is a left parenthesis,
+            # pop operators off the stack onto the output queue.
             while(self.stack):
                 if self.stack[-1].type == LPAREN:
                     break
                 self.output.append(self.stack.pop())
 
-            # pop the left parenthesis
+            # Pop the left parenthesis from the stack, but not onto the
+            # output queue.
             self.stack.pop()
+
+            # If the token at the top of the stack is a function token, pop it
+            # onto the output queue.
             if self.stack and self.stack[-1].type == FUNCTION:
                 func = self.stack.pop()
                 argc = self.argc.pop()
@@ -436,6 +480,9 @@ class Expression(object):
                     argc += 1
 
                 self.output.append(Element(FUNCTION, func.value, argc))
+
+            # If the stack runs out without finding a left parenthesis, then
+            # there are mismatched parentheses.
 
     def compile(self, compiler):
         stack = []
