@@ -1,6 +1,6 @@
 from expressions import Expression, ExpressionError
 
-class SecureCompiler(object):
+class AllowingCompiler(object):
     def __init__(self, allow=None):
         self.allow = allow or []
     def compile_literal(self, literal):
@@ -17,7 +17,7 @@ class SecureCompiler(object):
         arglist = ", " % args
         return "%s(%s)" % (function, arglist)
 
-compiler = SecureCompiler(allow=["a", "b"])
+compiler = AllowingCompiler(allow=["a", "b"])
 
 expr = Expression("a + b")
 result = expr.compile(compiler)
@@ -26,7 +26,6 @@ a = 1
 b = 1
 print(eval(result))
 
-
+# This will fail, because only a and b are allowed
 expr = Expression("a + c")
 result = expr.compile(compiler)
-print(eval(result))

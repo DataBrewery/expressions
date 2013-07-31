@@ -10,6 +10,7 @@ class ExpressionError(Exception):
 __all__ = (
             "tokenize",
             "Expression",
+            "ExpressionError",
 
             "INTEGER",
             "FLOAT",
@@ -485,6 +486,15 @@ class Expression(object):
             # there are mismatched parentheses.
 
     def compile(self, compiler):
+        """Compile the expression using `compiler`. The `compiler` should
+        implement:
+
+        * `compile_literal(literal)` – integer, float or string literal
+        * `compile_variable(variable)` – variable name
+        * `compile_operator(operator, op1, op2)` – binary operator
+        * `compile_function(function, args)` – function call with arguments
+        """
+
         stack = []
         for token in self.output:
             if token.type == LITERAL:
