@@ -1,7 +1,8 @@
 import unittest
 from expressions import *
 
-class TokenizerTestCase(unittest.TestCase):
+
+class StringReaderTestCase(unittest.TestCase):
     def test_tokenize_empty(self):
         tokens = tokenize("")
         self.assertEqual(0, len(tokens))
@@ -123,10 +124,9 @@ class TokenizerTestCase(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             tokenize("'not good\"")
 
-class ExpressionTestCase(unittest.TestCase):
+class ParserTestCase(unittest.TestCase):
     def assertTokens(self, string, expvalues, exptypes, length=None):
-        e = Expression(string)
-        tokens = e.output
+        tokens = parse(string)
 
         if length != None:
             self.assertEqual(length, len(tokens))
@@ -138,11 +138,11 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertSequenceEqual(types, exptypes)
 
     def test_basic(self):
-        e = Expression("1")
-        self.assertEqual(1, len(e.output))
+        output = parse("1")
+        self.assertEqual(1, len(output))
 
-        e = Expression("1 + 1")
-        self.assertEqual(3, len(e.output))
+        output = parse("1 + 1")
+        self.assertEqual(3, len(output))
 
         self.assertTokens("1+1", [1, 1, "+"], [LITERAL, LITERAL, OPERATOR])
 
@@ -189,24 +189,24 @@ class ExpressionTestCase(unittest.TestCase):
                           [LITERAL, LITERAL, OPERATOR, LITERAL, FUNCTION])
 
     def test_empty_function(self):
-        tokens = Expression("f()").output
+        tokens = parse("f()")
         token = tokens[0]
         self.assertEqual(FUNCTION, token.type)
         self.assertEqual("f", token.value)
         self.assertEqual(0, token.argc)
 
     def test_function_argc(self):
-        tokens = Expression("f(1)").output
+        tokens = parse("f(1)")
         token = tokens[1]
         self.assertEqual(FUNCTION, token.type)
         self.assertEqual(1, token.argc)
 
-        tokens = Expression("f(1, 2, 3)").output
+        tokens = parse("f(1, 2, 3)")
         token = tokens[3]
         self.assertEqual(FUNCTION, token.type)
         self.assertEqual(3, token.argc)
 
-        tokens = Expression("f(g(10, 12))").output
+        tokens = parse("f(g(10, 12))")
         token = tokens[3]
         self.assertEqual(FUNCTION, token.type)
         self.assertEqual("f", token.value)
@@ -222,3 +222,7 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertTokens("f(g)",
                           ["g", "f"],
                           [VARIABLE, FUNCTION])
+
+class CompilerTestCase(unittest.TestCase):
+    def test_foo(self):
+        pass

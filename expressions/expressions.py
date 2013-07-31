@@ -9,8 +9,15 @@ class ExpressionError(Exception):
 
 __all__ = (
             "tokenize",
-            "Expression",
+            "parse",
+
+            "Compiler",
             "ExpressionError",
+            "Operator",
+            "RIGHT",
+            "LEFT",
+            "UNARY",
+            "BINARY",
 
             "INTEGER",
             "FLOAT",
@@ -30,6 +37,10 @@ __all__ = (
             "COLON",
             "SEMICOLON",
         )
+
+Token = namedtuple('Token', ["type", "value"])
+Element = namedtuple('Element', ["type", "value", "argc"])
+Operator = namedtuple("Operator", ["name", "precedence", "assoc", "type"])
 
 # Tokens:
 
@@ -67,6 +78,12 @@ OPERATOR_CHARS = '+-*/!=<>%?|~'
 IDENTIFIER_START_CHARS = '_' # TODO: add @
 COMPOSED_OPERATORS = ( "!=", "==", "<=", ">=", "&&", "||", "**" )
 STRING_ESCAPE_CHAR = '\\'
+
+UNARY = 1
+BINARY = 2
+
+RIGHT = 1
+LEFT = 2
 
 class _StringReader(object):
     def __init__(self, string):
@@ -270,83 +287,44 @@ class _StringReader(object):
 
         return tokens
 
+# TODO: Remove the Operator named tuple, use just a dictionary
+default_dialect = {
+    "operators": (
+        Operator("^",  1000, RIGHT, BINARY),
+        Operator("*",   900, LEFT, BINARY),
+        Operator("/",   900, LEFT, BINARY),
+        Operator("%",   900, LEFT, BINARY),
 
-def tokenize(string):
-    """Parses the string and returns list of tokens."""
-    tokens = []
+        Operator("+",   500, LEFT, BINARY),
+        Operator("-",   500, LEFT, UNARY | BINARY),
 
-    reader = _StringReader(string)
+        Operator("^",   300, LEFT, BINARY),
+        Operator("&",   300, LEFT, BINARY),
+        Operator("|",   300, LEFT, BINARY),
 
-    try:
-        tokens = reader.tokenize()
-    except SyntaxError as e:
-        raise SyntaxError("Syntax error at %s: %s" % (reader.pos, str(e)))
+        Operator("<",   200, LEFT, BINARY),
+        Operator("<=",  200, LEFT, BINARY),
+        Operator(">",   200, LEFT, BINARY),
+        Operator(">=",  200, LEFT, BINARY),
+        Operator("!=",  200, LEFT, BINARY),
+        Operator("==",  200, LEFT, BINARY),
+    ),
+    "keyword_operators": ("not", "and", "or")
+}
 
-    return tokens
-
-
-UNARY = 1
-BINARY = 2
-
-RIGHT = 1
-LEFT = 2
-
-Token = namedtuple('Token', ["type", "value"])
-Element = namedtuple('Element', ["type", "value", "argc"])
-Operator = namedtuple("Operator", ["name", "precedence", "assoc", "type"])
-
-optable = (
-    Operator("**", 1000, RIGHT, BINARY),
-    Operator("^",  1000, RIGHT, BINARY),
-    Operator("*",   900, LEFT, BINARY),
-    Operator("/",   900, LEFT, BINARY),
-    Operator("%",   900, LEFT, BINARY),
-
-    Operator("+",   500, LEFT, BINARY),
-    Operator("-",   500, LEFT, UNARY | BINARY),
-
-    Operator("&",   300, LEFT, BINARY),
-    Operator("^",   300, LEFT, BINARY),
-    Operator("|",   300, LEFT, BINARY),
-
-    Operator("<",   200, LEFT, BINARY),
-    Operator("<=",  200, LEFT, BINARY),
-    Operator(">",   200, LEFT, BINARY),
-    Operator(">=",  200, LEFT, BINARY),
-    Operator("!=",  200, LEFT, BINARY),
-    Operator("==",  200, LEFT, BINARY),
-    Operator("in",  200, LEFT, BINARY),
-    Operator("is",  200, LEFT, BINARY),
-    Operator("not in", 200, LEFT, BINARY),
-    Operator("is not", 200, LEFT, BINARY),
-
-    Operator("not", 120, LEFT, UNARY),
-
-    Operator("and", 110, LEFT, BINARY),
-    Operator("or",  100, LEFT, BINARY),
-)
-
-class Expression(object):
-
-    def __init__(self, string):
-        self.string = string
+class _Parser(object):
+    def __init__(self, operators=None):
         self.operators = {}
         self.precedence = {}
 
-        for op in optable:
+        # TODO: don't allow this
+        operators = operators or default_dialect["operators"]
+
+        for op in operators:
             self.operators[op.name] = op
             self.precedence[op.name] = op.precedence
 
-        self.stack = []
-        self.output = []
-
-        self.tokens = tokenize(string)
-        self._parse()
-
-    def _parse(self):
-        """Parse `string`. `operators` is a dictionary of named operators where
-        values is their priority."""
-
+    def parse(self, tokens):
         # Shunting-yard algorithm
         # Variable function arguments:
         # http://www.kallisti.net.nz/blog/2008/02/extension-to-the-shunting-yard-algorithm-to-allow-variable-numbers-of-arguments-to-functions/
@@ -356,12 +334,12 @@ class Expression(object):
         self.were_values = []
         self.argc = []
 
-        for i, token in enumerate(self.tokens):
+        for i, token in enumerate(tokens):
             # The next_token is used only to identify whether identifier is a
             # variable name or a function call
 
-            if i + 1 < len(self.tokens):
-                next_token = self.tokens[i+1]
+            if i + 1 < len(tokens):
+                next_token = tokens[i+1]
                 if token.type == IDENTIFIER and next_token.type == LPAREN:
                     token = Token(FUNCTION, token.value)
 
@@ -379,6 +357,8 @@ class Expression(object):
 
             # Pop the operator onto the output queue.
             self.output.append(token)
+
+        return self.output
 
     def _parse_token(self, token):
 
@@ -485,29 +465,85 @@ class Expression(object):
             # If the stack runs out without finding a left parenthesis, then
             # there are mismatched parentheses.
 
-    def compile(self, compiler):
-        """Compile the expression using `compiler`. The `compiler` should
-        implement:
+def tokenize(string):
+    reader = _StringReader(string)
+    return reader.tokenize()
 
-        * `compile_literal(literal)` – integer, float or string literal
-        * `compile_variable(variable)` – variable name
-        * `compile_operator(operator, op1, op2)` – binary operator
-        * `compile_function(function, args)` – function call with arguments
+def parse(expression):
+    if isinstance(expression, str):
+        tokens = tokenize(expression)
+    else:
+        tokens = expression
+
+    parser = _Parser()
+    return parser.parse(tokens)
+
+class Compiler(object):
+
+    def __init__(self):
+        """Initializes default compiler instance"""
+
+        self.stack = []
+        self.output = []
+
+    def tokenize(self, string):
+        """Parses the string and returns list of tokens."""
+        tokens = []
+
+        reader = _StringReader(string)
+
+        try:
+            tokens = reader.tokenize()
+        except SyntaxError as e:
+            raise SyntaxError("Syntax error at %s: %s" % (reader.pos, str(e)))
+
+        return tokens
+
+    def parse(self, expression):
+        """Parse the `expression` which might be a string or a list of tokens
+        created by the `tokenize()` method.
+
+        Parser uses a modified Shunting-yard algorithm that supports variable
+        number of function arguments.
         """
 
+        if isinstance(expression, str):
+            tokens = self.tokenize(expression)
+        else:
+            tokens = expression
+
+        out = parse(tokens)
+        return out
+
+    def tokenize(self, expression):
+        reader = _StringReader(expression)
+        return reader.tokenize()
+
+    def compile(self, expression, context=None):
+        """Compile the `expression`. `context` is an optional object passed to
+        the compiler methods.
+        """
+
+        # string -> tokens (follow compiler rules)
+        # tokens -> infix (follow compiler rules)
+        # infox -> object (follow context)
+
+        # TODO: Use the context for parse
+        output = self.parse(expression)
+
         stack = []
-        for token in self.output:
+        for token in output:
             if token.type == LITERAL:
-                value = compiler.compile_literal(token.value)
+                value = self.compile_literal(context, token.value)
 
             elif token.type == VARIABLE:
-                value = compiler.compile_variable(token.value)
+                value = self.compile_variable(context, token.value)
 
             elif token.type == OPERATOR:
                 op2 = stack.pop()
                 op1 = stack.pop()
 
-                value = compiler.compile_operator(token.value, op1, op2)
+                value = self.compile_operator(context, token.value, op1, op2)
 
             elif token.type == FUNCTION:
                 if token.argc:
@@ -515,7 +551,7 @@ class Expression(object):
                 else:
                     args = []
 
-                value = complier.compile_function(token.value, args)
+                value = self.compile_function(context, token.value, args)
 
             else:
                 raise RuntimeError("Unknown token type %s" % repr(token.type))
