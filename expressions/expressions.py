@@ -86,13 +86,19 @@ RIGHT = 1
 LEFT = 2
 
 class _StringReader(object):
-    def __init__(self, string):
+    def __init__(self, string, keyword_operators=None, case_sensitive=True):
         self.string = string
         self.length = len(string)
         self.pos = 0
         self.char = None
         self.category = None
         self.subcategory = None
+
+        self.keyword_operators = keyword_operators or []
+        self.case_sensitive = case_sensitive
+
+        if not case_sensitive:
+            self.keyword_operators = [k.lower() for k in self.keyword_operators]
 
         # Advance to the first character
         if string:
@@ -270,15 +276,8 @@ class _StringReader(object):
 
             token = self.string[start:self.pos+1]
 
-            # TODO: treat escaped characters
-            if token_type == STRING:
-                token = token[1:-1]
-            elif token_type == INTEGER:
-                token = int(token)
-            elif token_type == FLOAT:
-                token = float(token)
 
-            tokens.append(Token(token_type, token))
+            tokens.append(self._coalesced_token(token_type, token))
 
             if not self:
                 break
@@ -286,6 +285,25 @@ class _StringReader(object):
             self.next()
 
         return tokens
+
+    def _coalesced_token(self, token_type, token):
+        # TODO: treat escaped characters
+        if token_type == STRING:
+            token = token[1:-1]
+        elif token_type == INTEGER:
+            token = int(token)
+        elif token_type == FLOAT:
+            token = float(token)
+        elif token_type == IDENTIFIER:
+            if not self.case_sensitive:
+                keyword = token.lower()
+            else:
+                keyword = token
+
+            if keyword in self.keyword_operators:
+                token_type = OPERATOR
+
+        return Token(token_type, token)
 
 # TODO: Remove the Operator named tuple, use just a dictionary
 default_dialect = {
@@ -309,7 +327,8 @@ default_dialect = {
         Operator("!=",  200, LEFT, BINARY),
         Operator("==",  200, LEFT, BINARY),
     ),
-    "keyword_operators": ("not", "and", "or")
+    "keyword_operators": ("not", "and", "or"),
+    "case_sensitive": False
 }
 
 class _Parser(object):
@@ -465,13 +484,20 @@ class _Parser(object):
             # If the stack runs out without finding a left parenthesis, then
             # there are mismatched parentheses.
 
-def tokenize(string):
-    reader = _StringReader(string)
+def tokenize(string, dialect=None):
+    if dialect:
+        keyword_operators = dialect.get("keyword_operators", [])
+        case_sensitive = dialect.get("case_sensitive", True)
+        reader = _StringReader(string, keyword_operators, case_sensitive)
+    else:
+        reader = _StringReader(string)
+
     return reader.tokenize()
 
-def parse(expression):
+def parse(expression, dialect=None):
     if isinstance(expression, str):
-        tokens = tokenize(expression)
+        tokens = tokenize(expression, dialect)
+
     else:
         tokens = expression
 

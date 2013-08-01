@@ -59,6 +59,36 @@ class StringReaderTestCase(unittest.TestCase):
         self.assertFirstToken("===", "==", OPERATOR, 2)
         self.assertFirstToken("+*", "+", OPERATOR, 2)
 
+    def test_keyword_operators(self):
+        dialect = {
+                    "keyword_operators": ["and", "or"],
+                    "case_sensitive": True
+                }
+
+        tokens = tokenize("parsley or rosemary and thyme", dialect)
+        types = [t.type for t in tokens]
+        self.assertSequenceEqual([IDENTIFIER, OPERATOR, IDENTIFIER, OPERATOR,
+                                    IDENTIFIER], types)
+
+        tokens = tokenize("AND and OR or", dialect)
+        types = [t.type for t in tokens]
+        self.assertSequenceEqual([IDENTIFIER, OPERATOR, IDENTIFIER, OPERATOR],
+                                 types)
+
+        dialect["case_sensitive"] = False
+
+        tokens = tokenize("AND and OR or", dialect)
+        types = [t.type for t in tokens]
+        self.assertSequenceEqual([OPERATOR, OPERATOR, OPERATOR, OPERATOR],
+                                 types)
+
+        dialect["keyword_operators"] = ["AND", "OR"]
+
+        tokens = tokenize("AND and OR or", dialect)
+        types = [t.type for t in tokens]
+        self.assertSequenceEqual([OPERATOR, OPERATOR, OPERATOR, OPERATOR],
+                                 types)
+
     def test_identifier(self):
         self.assertFirstToken("parsley", "parsley", IDENTIFIER, 1)
         self.assertFirstToken("_sage_10", "_sage_10", IDENTIFIER, 1)
