@@ -67,9 +67,6 @@ This will fail, because only `a` and `b` are allowed, `c` is not:
 To-do
 -----
 
-* unary minus
-* few default compilers
-
 Stay lightweight and simple.
 
 License

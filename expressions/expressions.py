@@ -15,6 +15,7 @@ __all__ = (
             "Compiler",
             "ExpressionError",
             "Operator",
+
             "RIGHT",
             "LEFT",
             "UNARY",
@@ -71,12 +72,12 @@ CAT_SEPARATOR = 'Z'
 CAT_CONTROL = 'C'
 CAT_NUMBER = 'N'
 CAT_LETTER = 'L'
-CAT_IDENTIFIER = CAT_NUMBER + CAT_LETTER
 CAT_SYMBOL = 'S'
 SUBCAT_MATH = 'm'
 
-OPERATOR_CHARS = '+-*/!=<>%?|~'
+# Do not expose this to the dialect, predefine identifier patterns instead
 IDENTIFIER_START_CHARS = '_' # TODO: add @
+CAT_IDENTIFIER = CAT_NUMBER + CAT_LETTER
 STRING_ESCAPE_CHAR = '\\'
 
 UNARY = 1
@@ -180,6 +181,7 @@ class _StringReader(object):
         self.keyword_operators = dialect.get("keyword_operators", [])
         self.case_sensitive = dialect.get("case_sensitive", True)
         self.composed_operators = dialect.get("composed_operators", [])
+        self.operator_characters = dialect.get("operator_characters", "")
 
         # Prepare list of composed operatros
 
@@ -329,7 +331,7 @@ class _StringReader(object):
                 self.consume(CAT_IDENTIFIER, IDENTIFIER_START_CHARS)
 
             # Operator
-            elif self.char in OPERATOR_CHARS:
+            elif self.char in self.operator_characters:
                 token_type = OPERATOR
                 peek = self.peek()
                 if peek:
