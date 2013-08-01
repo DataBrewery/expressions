@@ -28,7 +28,7 @@ class StringReaderTestCase(unittest.TestCase):
 
     def assertFirstToken(self, string, expvalue, exptype, length=None):
         tokens = tokenize(string)
-        if length != None:
+        if length is not None:
             self.assertEqual(length, len(tokens))
         value = tokens[0].value
         ttype = tokens[0].type
@@ -37,7 +37,7 @@ class StringReaderTestCase(unittest.TestCase):
 
     def assertTokens(self, string, expvalues, exptypes, length=None):
         tokens = tokenize(string)
-        if length != None:
+        if length is not None:
             self.assertEqual(length, len(tokens))
         values = list(token.value for token in tokens)
         types = list(token.type for token in tokens)
@@ -60,10 +60,8 @@ class StringReaderTestCase(unittest.TestCase):
         self.assertFirstToken("+*", "+", OPERATOR, 2)
 
     def test_keyword_operators(self):
-        dialect = {
-                    "keyword_operators": ["and", "or"],
-                    "case_sensitive": True
-                }
+        dialect = dict(default_dialect)
+        dialect["case_sensitive"] = True
 
         tokens = tokenize("parsley or rosemary and thyme", dialect)
         types = [t.type for t in tokens]
@@ -158,7 +156,7 @@ class ParserTestCase(unittest.TestCase):
     def assertTokens(self, string, expvalues, exptypes, length=None):
         tokens = parse(string)
 
-        if length != None:
+        if length is not None:
             self.assertEqual(length, len(tokens))
 
         values = list(token.value for token in tokens)
@@ -252,6 +250,36 @@ class ParserTestCase(unittest.TestCase):
         self.assertTokens("f(g)",
                           ["g", "f"],
                           [VARIABLE, FUNCTION])
+
+    def test_unary(self):
+        self.assertTokens("-x",
+                          ["x", "-"],
+                          [VARIABLE, OPERATOR])
+
+        self.assertTokens("- - x",
+                          ["x", "-", "-"],
+                          [VARIABLE, OPERATOR, OPERATOR])
+
+        self.assertTokens("x - y",
+                          ["x", "y", "-"],
+                          [VARIABLE, VARIABLE, OPERATOR])
+
+        self.assertTokens("x + - y",
+                          ["x", "y", "-", "+"],
+                          [VARIABLE, VARIABLE, OPERATOR, OPERATOR])
+
+        self.assertTokens("- x + y",
+                          ["x", "-", "y", "+"],
+                          [VARIABLE, OPERATOR, VARIABLE, OPERATOR])
+
+    def test_unary_keword(self):
+        self.assertTokens("not A",
+                          ["A", "not"],
+                          [VARIABLE, OPERATOR])
+
+        self.assertTokens("A and not B",
+                          ["A", "B", "not", "and"],
+                          [VARIABLE, VARIABLE, OPERATOR, OPERATOR])
 
 class CompilerTestCase(unittest.TestCase):
     def test_foo(self):

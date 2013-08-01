@@ -10,6 +10,7 @@ class ExpressionError(Exception):
 __all__ = (
             "tokenize",
             "parse",
+            "default_dialect",
 
             "Compiler",
             "ExpressionError",
@@ -76,7 +77,6 @@ SUBCAT_MATH = 'm'
 
 OPERATOR_CHARS = '+-*/!=<>%?|~'
 IDENTIFIER_START_CHARS = '_' # TODO: add @
-COMPOSED_OPERATORS = ( "!=", "==", "<=", ">=", "&&", "||", "**" )
 STRING_ESCAPE_CHAR = '\\'
 
 UNARY = 1
@@ -85,8 +85,90 @@ BINARY = 2
 RIGHT = 1
 LEFT = 2
 
+# TODO: Remove the Operator named tuple, use just a dictionary
+default_dialect = {
+    "operators": (
+        Operator("^",  1000, RIGHT, BINARY),
+        Operator("*",   900, LEFT, BINARY),
+        Operator("/",   900, LEFT, BINARY),
+        Operator("%",   900, LEFT, BINARY),
+
+        Operator("+",   500, LEFT, BINARY),
+        Operator("-",   500, LEFT, UNARY | BINARY),
+
+        Operator("&",   300, LEFT, BINARY),
+        Operator("|",   300, LEFT, BINARY),
+
+        Operator("<",   200, LEFT, BINARY),
+        Operator("<=",  200, LEFT, BINARY),
+        Operator(">",   200, LEFT, BINARY),
+        Operator(">=",  200, LEFT, BINARY),
+        Operator("!=",  200, LEFT, BINARY),
+        Operator("==",  200, LEFT, BINARY),
+
+        Operator("not",  120, LEFT, UNARY),
+        Operator("and",  110, LEFT, BINARY),
+        Operator("or",   100, LEFT, BINARY),
+    ),
+    "keyword_operators": ("not", "and", "or"),
+    "case_sensitive": False
+}
+def tokenize(string, dialect=None):
+    """Break the `string` into tokens. Returns a list of tuples (`type`,
+    `value`)"""
+
+    dialect = dialect or default_dialect
+    dialect = prepare_dialect(dialect)
+
+    reader = _StringReader(string, dialect)
+
+    return reader.tokenize()
+
+def parse(expression, dialect=None):
+    """Parses the `expressions` which might be a string or a list of tokens
+    from `tokenize()`."""
+
+    dialect = dialect or default_dialect
+    dialect = prepare_dialect(dialect)
+
+    if isinstance(expression, str):
+        tokens = tokenize(expression, dialect)
+
+    else:
+        tokens = expression
+
+    parser = _Parser(dialect)
+    return parser.parse(tokens)
+
+
+def prepare_dialect(dialect):
+    dialect = dict(dialect)
+
+    operators = dialect.get("operators", [])
+    opnames = [op.name for op in operators]
+
+    # Get keyword operators:
+    keyword_operators = dialect.get("keyword_operators", [])
+    if not keyword_operators:
+        for op in opnames:
+            if all(unicodedata.category(c)[0] == CAT_LETTER for c in op):
+                keyword_operators.add(op)
+
+    dialect["keyword_operators"] = keyword_operators
+
+    plain_operators = [op for op in opnames if op not in keyword_operators]
+    characters = "".join(plain_operators)
+    characters = "".join(set(characters))
+
+    dialect["operator_characters"] = characters
+
+    composed_ops = [op for op in plain_operators if len(op) > 1]
+    dialect["composed_operators"] = composed_ops
+
+    return dialect
+
 class _StringReader(object):
-    def __init__(self, string, keyword_operators=None, case_sensitive=True):
+    def __init__(self, string, dialect=None):
         self.string = string
         self.length = len(string)
         self.pos = 0
@@ -94,10 +176,14 @@ class _StringReader(object):
         self.category = None
         self.subcategory = None
 
-        self.keyword_operators = keyword_operators or []
-        self.case_sensitive = case_sensitive
+        dialect = dialect or {}
+        self.keyword_operators = dialect.get("keyword_operators", [])
+        self.case_sensitive = dialect.get("case_sensitive", True)
+        self.composed_operators = dialect.get("composed_operators", [])
 
-        if not case_sensitive:
+        # Prepare list of composed operatros
+
+        if not self.case_sensitive:
             self.keyword_operators = [k.lower() for k in self.keyword_operators]
 
         # Advance to the first character
@@ -248,7 +334,7 @@ class _StringReader(object):
                 peek = self.peek()
                 if peek:
                     composed = self.char + peek
-                    if composed in COMPOSED_OPERATORS:
+                    if composed in self.composed_operators:
                         self.next()
 
             elif self.char == "'" or self.char == '"':
@@ -305,39 +391,14 @@ class _StringReader(object):
 
         return Token(token_type, token)
 
-# TODO: Remove the Operator named tuple, use just a dictionary
-default_dialect = {
-    "operators": (
-        Operator("^",  1000, RIGHT, BINARY),
-        Operator("*",   900, LEFT, BINARY),
-        Operator("/",   900, LEFT, BINARY),
-        Operator("%",   900, LEFT, BINARY),
-
-        Operator("+",   500, LEFT, BINARY),
-        Operator("-",   500, LEFT, UNARY | BINARY),
-
-        Operator("^",   300, LEFT, BINARY),
-        Operator("&",   300, LEFT, BINARY),
-        Operator("|",   300, LEFT, BINARY),
-
-        Operator("<",   200, LEFT, BINARY),
-        Operator("<=",  200, LEFT, BINARY),
-        Operator(">",   200, LEFT, BINARY),
-        Operator(">=",  200, LEFT, BINARY),
-        Operator("!=",  200, LEFT, BINARY),
-        Operator("==",  200, LEFT, BINARY),
-    ),
-    "keyword_operators": ("not", "and", "or"),
-    "case_sensitive": False
-}
 
 class _Parser(object):
-    def __init__(self, operators=None):
+    def __init__(self, dialect=None):
         self.operators = {}
         self.precedence = {}
 
-        # TODO: don't allow this
-        operators = operators or default_dialect["operators"]
+        dialect = dialect or default_dialect
+        operators = dialect["operators"]
 
         for op in operators:
             self.operators[op.name] = op
@@ -350,8 +411,11 @@ class _Parser(object):
 
         self.stack = []
         self.output = []
-        self.were_values = []
+        # For variadic function:
+        self.were_arguments = []
         self.argc = []
+        # For deterining if an operator is unary
+        self.was_value = False
 
         for i, token in enumerate(tokens):
             # The next_token is used only to identify whether identifier is a
@@ -388,24 +452,30 @@ class _Parser(object):
         if token.type in LITERALS:
             self.output.append(Element(LITERAL, token.value, 0))
 
-            if self.were_values:
-                self.were_values[-1] = True
+            if self.were_arguments:
+                self.were_arguments[-1] = True
+
+            self.was_value = True
 
         # ... same situation as above
         elif token.type == IDENTIFIER:
             self.output.append(Element(VARIABLE, token.value, 0))
 
-            if self.were_values:
-                self.were_values[-1] = True
+            if self.were_arguments:
+                self.were_arguments[-1] = True
+
+            self.was_value = True
 
         # If the token is a function token, then push it onto the stack.
         elif token.type == FUNCTION:
             self.stack.append(Element(FUNCTION, token.value, 0))
             self.argc.append(0)
 
-            if self.were_values:
-                self.were_values[-1] = True
-            self.were_values.append(False)
+            if self.were_arguments:
+                self.were_arguments[-1] = True
+            self.were_arguments.append(False)
+
+            self.was_value = False
 
         # If the token is a function argument separator (e.g., a comma):
         elif token.type == COMMA:
@@ -418,17 +488,30 @@ class _Parser(object):
                     break
                 self.output.append(self.stack.pop())
 
-            if self.were_values.pop():
+            if self.were_arguments.pop():
                 # Increase argument count
                 self.argc.append(self.argc.pop() + 1)
-            self.were_values.append(False)
+            self.were_arguments.append(False)
+
+            self.was_value = False
 
         # If the token is an operator, o1, then:
         elif token.type == OPERATOR:
             op1 = self.operators[token.value]
 
+            # Determine if the operator should be considered unary:
+
             if op1.type == UNARY:
-                self.stack.push(Element(OPERATOR, token.value, 1))
+                is_unary = True
+            elif (op1.type | UNARY) and not self.was_value:
+                is_unary = True
+            else:
+                is_unary = False
+
+            self.was_value = False
+
+            if is_unary:
+                self.stack.append(Element(OPERATOR, token.value, 1))
 
             else:
                 # while there is an operator token, o2, at the top of the
@@ -458,6 +541,8 @@ class _Parser(object):
         elif token.type == LPAREN:
             self.stack.append(Element(LPAREN, '(', 0))
 
+            self.was_value = False
+
         # If the token is a right parenthesis:
         elif token.type == RPAREN:
             # Until the token at the top of the stack is a left parenthesis,
@@ -476,7 +561,7 @@ class _Parser(object):
             if self.stack and self.stack[-1].type == FUNCTION:
                 func = self.stack.pop()
                 argc = self.argc.pop()
-                if self.were_values.pop():
+                if self.were_arguments.pop():
                     argc += 1
 
                 self.output.append(Element(FUNCTION, func.value, argc))
@@ -484,25 +569,9 @@ class _Parser(object):
             # If the stack runs out without finding a left parenthesis, then
             # there are mismatched parentheses.
 
-def tokenize(string, dialect=None):
-    if dialect:
-        keyword_operators = dialect.get("keyword_operators", [])
-        case_sensitive = dialect.get("case_sensitive", True)
-        reader = _StringReader(string, keyword_operators, case_sensitive)
-    else:
-        reader = _StringReader(string)
+            # Right paren can be cosidered as a "closing of a composed value"
+            self.was_value = True
 
-    return reader.tokenize()
-
-def parse(expression, dialect=None):
-    if isinstance(expression, str):
-        tokens = tokenize(expression, dialect)
-
-    else:
-        tokens = expression
-
-    parser = _Parser()
-    return parser.parse(tokens)
 
 class Compiler(object):
 

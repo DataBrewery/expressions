@@ -68,8 +68,6 @@ To-do
 -----
 
 * unary minus
-* operator dialects
-* keyword based operators
 * few default compilers
 
 Stay lightweight and simple.
