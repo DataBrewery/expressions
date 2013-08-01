@@ -29,20 +29,24 @@ Create a compiler that allows only certain variables:
 
     from expressions import Expression, ExpressionError
 
-    class AllowingCompiler(object):
+    class AllowingCompiler(Compiler):
         def __init__(self, allow=None):
+            super().__init__()
+
             self.allow = allow or []
-        def compile_literal(self, literal):
+
+        def compile_literal(self, context, literal):
             return repr(literal)
-        def compile_variable(self, variable):
+
+        def compile_variable(self, context, variable):
             if self.allow and variable not in self.allow:
                 raise ExpressionError("Variable %s is not allowed" % variable)
-
             return variable
 
-        def compile_operator(self, operator, op1, op2):
+        def compile_operator(self, context, operator, op1, op2):
             return "(%s %s %s)" % (op1, operator, op2)
-        def compile_function(self, function, args):
+
+        def compile_function(self, context, function, args):
             arglist = ", " % args
             return "%s(%s)" % (function, arglist)
 
@@ -52,8 +56,7 @@ Allow only `a` and `b` variables:
 
 Try to compile and execute the expression:
 
-    expr = Expression("a + b")
-    result = expr.compile(compiler)
+    result = compiler.compile("a + b")
 
     a = 1
     b = 1
@@ -61,8 +64,7 @@ Try to compile and execute the expression:
 
 This will fail, because only `a` and `b` are allowed, `c` is not:
 
-    expr = Expression("a + c")
-    result = expr.compile(compiler)
+    result = compiler.compile("a + c")
 
 To-do
 -----
