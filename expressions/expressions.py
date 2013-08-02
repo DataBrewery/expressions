@@ -637,10 +637,17 @@ class Compiler(object):
                 value = self.compile_variable(context, token.value)
 
             elif token.type == OPERATOR:
-                op2 = stack.pop()
-                op1 = stack.pop()
+                if token.argc == 1:
+                    op = stack.pop()
+                    value = self.compile_unary(context, token.value, op)
+                elif token.argc == 2:
+                    op2 = stack.pop()
+                    op1 = stack.pop()
 
-                value = self.compile_operator(context, token.value, op1, op2)
+                    value = self.compile_operator(context, token.value, op1, op2)
+                else:
+                    raise RuntimeError("Invalid operator argument count: %s" %
+                                            token.argc)
 
             elif token.type == FUNCTION:
                 if token.argc:
