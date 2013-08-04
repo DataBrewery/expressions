@@ -60,29 +60,26 @@ class StringReaderTestCase(unittest.TestCase):
         self.assertFirstToken("+*", "+", OPERATOR, 2)
 
     def test_keyword_operators(self):
-        dialect = dict(default_dialect)
-        dialect["case_sensitive"] = True
+        class case_insensitive_dialect(default_dialect):
+            case_sensitive = False
 
-        tokens = tokenize("parsley or rosemary and thyme", dialect)
+        class case_sensitive_dialect(default_dialect):
+            case_sensitive = True
+
+        register_dialect("case_insensitive", case_insensitive_dialect)
+        register_dialect("case_sensitive", case_sensitive_dialect)
+
+        tokens = tokenize("parsley or rosemary and thyme", "case_sensitive")
         types = [t.type for t in tokens]
         self.assertSequenceEqual([IDENTIFIER, OPERATOR, IDENTIFIER, OPERATOR,
                                     IDENTIFIER], types)
 
-        tokens = tokenize("AND and OR or", dialect)
+        tokens = tokenize("AND and OR or", "case_sensitive")
         types = [t.type for t in tokens]
         self.assertSequenceEqual([IDENTIFIER, OPERATOR, IDENTIFIER, OPERATOR],
                                  types)
 
-        dialect["case_sensitive"] = False
-
-        tokens = tokenize("AND and OR or", dialect)
-        types = [t.type for t in tokens]
-        self.assertSequenceEqual([OPERATOR, OPERATOR, OPERATOR, OPERATOR],
-                                 types)
-
-        dialect["keyword_operators"] = ["AND", "OR"]
-
-        tokens = tokenize("AND and OR or", dialect)
+        tokens = tokenize("AND and OR or", "case_insensitive")
         types = [t.type for t in tokens]
         self.assertSequenceEqual([OPERATOR, OPERATOR, OPERATOR, OPERATOR],
                                  types)
@@ -281,6 +278,20 @@ class ParserTestCase(unittest.TestCase):
                           ["A", "B", "not", "and"],
                           [VARIABLE, VARIABLE, OPERATOR, OPERATOR])
 
-class CompilerTestCase(unittest.TestCase):
-    def test_foo(self):
+
+class ValidatingCompiler(Compiler):
+    def compile_variable(self, context, variable):
+        if variable not in context:
+            raise ExpressionError(variable)
+    def compile_function(self, context, function, args):
+        if function not in context:
+            raise ExpressionError(function)
+    def compile_literal(self, context, literal):
         pass
+    def compile_operator(self, context, operator, op1, op2):
+        pass
+
+class CompilerTestCase(unittest.TestCase):
+    def test_validating_compiler(self):
+        compiler = ValidatingCompiler()
+        result = compiler.compile("1+1", ["a", "b"])

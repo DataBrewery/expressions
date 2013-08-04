@@ -25,22 +25,19 @@ Embed custom expression evaluation into your application. Example uses:
 * compiler for custom object structures, such as for frameworks providing
   functional-programing like interface
 
-Create a compiler that allows only certain variables:
+Create a compiler that allows only certain variables. The list of allowed
+variables is provided in the compilation context:
 
-    from expressions import Expression, ExpressionError
+    from expressions import Compiler, ExpressionError
 
     class AllowingCompiler(Compiler):
-        def __init__(self, allow=None):
-            super().__init__()
-
-            self.allow = allow or []
-
         def compile_literal(self, context, literal):
             return repr(literal)
 
         def compile_variable(self, context, variable):
-            if self.allow and variable not in self.allow:
+            if context and variable not in context:
                 raise ExpressionError("Variable %s is not allowed" % variable)
+
             return variable
 
         def compile_operator(self, context, operator, op1, op2):
@@ -52,11 +49,13 @@ Create a compiler that allows only certain variables:
 
 Allow only `a` and `b` variables:
 
-    compiler = AllowingCompiler(allow=["a", "b"])
+    compiler = AllowingCompiler()
+
+    allowed_variables = ["a", "b"]
 
 Try to compile and execute the expression:
 
-    result = compiler.compile("a + b")
+    result = compiler.compile("a + b", allowed_variables)
 
     a = 1
     b = 1
@@ -64,7 +63,33 @@ Try to compile and execute the expression:
 
 This will fail, because only `a` and `b` are allowed, `c` is not:
 
-    result = compiler.compile("a + c")
+    result = compiler.compile("a + c", allowed_variables)
+
+Writing a compiler
+==================
+
+To write a custom compiler subclass a `Compiler` class and implement the
+following methods:
+
+* `compile_literal` taking a number or a string object
+* `compile_variable` taking a variable name
+* `compile_operator` taking a binary operator and two operands
+* `compile_unary` taking an unary operator and one operand
+* `compile_function` taking a function name and list of arguments
+
+Template:
+
+    class MyCompiler(Compiler):
+        def compile_literal(self, context, literal):
+            pass
+        def compile_variable(self, context, variable):
+            pass
+        def compile_operator(self, context, operator, op1, op2):
+            pass
+        def compile_unary(self, context, operator, operand):
+            pass
+        def compile_function(self, context, function, args):
+            pass
 
 To-do
 -----

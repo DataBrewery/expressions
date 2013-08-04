@@ -11,6 +11,9 @@ __all__ = (
             "tokenize",
             "parse",
             "default_dialect",
+            "register_dialect",
+            "get_dialect",
+            "unregister_dialect",
 
             "Compiler",
             "ExpressionError",
@@ -86,51 +89,100 @@ BINARY = 2
 RIGHT = 1
 LEFT = 2
 
-# TODO: Remove the Operator named tuple, use just a dictionary
-default_dialect = {
-    "operators": (
-        Operator("^",  1000, RIGHT, BINARY),
-        Operator("*",   900, LEFT, BINARY),
-        Operator("/",   900, LEFT, BINARY),
-        Operator("%",   900, LEFT, BINARY),
+# Dialect
+class Dialect(object):
+    operators = None
+    case_sensitive = None
 
-        Operator("+",   500, LEFT, BINARY),
-        Operator("-",   500, LEFT, UNARY | BINARY),
+    # Instance variables:
+    # keyword_operators = []
+    # operator_characters = ""
+    # composed_operators = []
 
-        Operator("&",   300, LEFT, BINARY),
-        Operator("|",   300, LEFT, BINARY),
+    def __init__(self):
+        operators = {}
+        for name, op in self.operators.items():
+            if len(op) != 3:
+                raise RuntimeError("Invalid specification of operator %s" % name)
+            operator = Operator(name, op[0], op[1], op[2])
+            operators[name] = operator
+        opnames = operators.keys()
+        self.operators = operators
 
-        Operator("<",   200, LEFT, BINARY),
-        Operator("<=",  200, LEFT, BINARY),
-        Operator(">",   200, LEFT, BINARY),
-        Operator(">=",  200, LEFT, BINARY),
-        Operator("!=",  200, LEFT, BINARY),
-        Operator("==",  200, LEFT, BINARY),
+        # Get keyword operators:
+        self.keyword_operators = []
+        for op in opnames:
+            if all(unicodedata.category(c)[0] == CAT_LETTER for c in op):
+                self.keyword_operators.append(op)
 
-        Operator("not",  120, LEFT, UNARY),
-        Operator("and",  110, LEFT, BINARY),
-        Operator("or",   100, LEFT, BINARY),
-    ),
-    "keyword_operators": ("not", "and", "or"),
-    "case_sensitive": False
-}
-def tokenize(string, dialect=None):
+        plain_operators = [op for op in opnames if op not in self.keyword_operators]
+
+        characters = "".join(plain_operators)
+        characters = "".join(set(characters))
+        self.operator_characters = characters
+
+        composed_ops = [op for op in plain_operators if len(op) > 1]
+        self.composed_operators = composed_ops
+
+# Default Dialect
+#
+# Use the same structure as we require from dialect implementors, then cache
+# prepared version after first use.
+#
+# The operator tuple is: (precedence, associativeness, type)
+#
+class default_dialect(Dialect):
+    operators = {
+        "^": (1000, RIGHT, BINARY),
+        "*": (900, LEFT, BINARY),
+        "/": (900, LEFT, BINARY),
+        "%": (900, LEFT, BINARY),
+
+        "+":  (500, LEFT, BINARY),
+        "-":  (500, LEFT, UNARY | BINARY),
+
+        "&":  (300, LEFT, BINARY),
+        "|":  (300, LEFT, BINARY),
+
+        "<":  (200, LEFT, BINARY),
+        "<=": (200, LEFT, BINARY),
+        ">":  (200, LEFT, BINARY),
+        ">=": (200, LEFT, BINARY),
+        "!=": (200, LEFT, BINARY),
+        "==": (200, LEFT, BINARY),
+
+        "not": (120, LEFT, UNARY),
+        "and": (110, LEFT, BINARY),
+        "or":  (100, LEFT, BINARY),
+    }
+    case_sensitive = False
+
+_dialects = {
+        "default": default_dialect()
+    }
+
+def register_dialect(name, dialect):
+    if name in _dialects:
+        raise RuntimeError("Dialect %s already registered", name)
+    _dialects[name] = dialect()
+
+def get_dialect(name):
+    return _dialects[name]
+
+def unregister_dialect(name):
+    del _dialects[name]
+
+def tokenize(string, dialect="default"):
     """Break the `string` into tokens. Returns a list of tuples (`type`,
     `value`)"""
-
-    dialect = dialect or default_dialect
-    dialect = prepare_dialect(dialect)
 
     reader = _StringReader(string, dialect)
 
     return reader.tokenize()
 
-def parse(expression, dialect=None):
+def parse(expression, dialect="default"):
     """Parses the `expressions` which might be a string or a list of tokens
     from `tokenize()`."""
-
-    dialect = dialect or default_dialect
-    dialect = prepare_dialect(dialect)
 
     if isinstance(expression, str):
         tokens = tokenize(expression, dialect)
@@ -142,34 +194,8 @@ def parse(expression, dialect=None):
     return parser.parse(tokens)
 
 
-def prepare_dialect(dialect):
-    dialect = dict(dialect)
-
-    operators = dialect.get("operators", [])
-    opnames = [op.name for op in operators]
-
-    # Get keyword operators:
-    keyword_operators = dialect.get("keyword_operators", [])
-    if not keyword_operators:
-        for op in opnames:
-            if all(unicodedata.category(c)[0] == CAT_LETTER for c in op):
-                keyword_operators.add(op)
-
-    dialect["keyword_operators"] = keyword_operators
-
-    plain_operators = [op for op in opnames if op not in keyword_operators]
-    characters = "".join(plain_operators)
-    characters = "".join(set(characters))
-
-    dialect["operator_characters"] = characters
-
-    composed_ops = [op for op in plain_operators if len(op) > 1]
-    dialect["composed_operators"] = composed_ops
-
-    return dialect
-
 class _StringReader(object):
-    def __init__(self, string, dialect=None):
+    def __init__(self, string, dialect="default"):
         self.string = string
         self.length = len(string)
         self.pos = 0
@@ -177,16 +203,14 @@ class _StringReader(object):
         self.category = None
         self.subcategory = None
 
-        dialect = dialect or {}
-        self.keyword_operators = dialect.get("keyword_operators", [])
-        self.case_sensitive = dialect.get("case_sensitive", True)
-        self.composed_operators = dialect.get("composed_operators", [])
-        self.operator_characters = dialect.get("operator_characters", "")
+        self.dialect = get_dialect(dialect)
 
         # Prepare list of composed operatros
 
-        if not self.case_sensitive:
-            self.keyword_operators = [k.lower() for k in self.keyword_operators]
+        if self.dialect.case_sensitive:
+            self.keyword_operators = self.dialect.keyword_operators
+        else:
+            self.keyword_operators = [k.lower() for k in self.dialect.keyword_operators]
 
         # Advance to the first character
         if string:
@@ -331,12 +355,12 @@ class _StringReader(object):
                 self.consume(CAT_IDENTIFIER, IDENTIFIER_START_CHARS)
 
             # Operator
-            elif self.char in self.operator_characters:
+            elif self.char in self.dialect.operator_characters:
                 token_type = OPERATOR
                 peek = self.peek()
                 if peek:
                     composed = self.char + peek
-                    if composed in self.composed_operators:
+                    if composed in self.dialect.composed_operators:
                         self.next()
 
             elif self.char == "'" or self.char == '"':
@@ -383,28 +407,25 @@ class _StringReader(object):
         elif token_type == FLOAT:
             token = float(token)
         elif token_type == IDENTIFIER:
-            if not self.case_sensitive:
+            if not self.dialect.case_sensitive:
                 keyword = token.lower()
             else:
                 keyword = token
 
-            if keyword in self.keyword_operators:
+            if keyword in self.dialect.keyword_operators:
                 token_type = OPERATOR
 
         return Token(token_type, token)
 
 
 class _Parser(object):
-    def __init__(self, dialect=None):
-        self.operators = {}
+    def __init__(self, dialect="default"):
+        dialect = get_dialect(dialect)
+        self.operators = dialect.operators
+
         self.precedence = {}
-
-        dialect = dialect or default_dialect
-        operators = dialect["operators"]
-
-        for op in operators:
-            self.operators[op.name] = op
-            self.precedence[op.name] = op.precedence
+        for name, op in dialect.operators.items():
+            self.precedence[name] = op.precedence
 
     def parse(self, tokens):
         # Shunting-yard algorithm
@@ -576,6 +597,7 @@ class _Parser(object):
 
 
 class Compiler(object):
+    dialect = "default"
 
     def __init__(self):
         """Initializes default compiler instance"""
@@ -587,7 +609,7 @@ class Compiler(object):
         """Parses the string and returns list of tokens."""
         tokens = []
 
-        reader = _StringReader(string)
+        reader = _StringReader(string, dialect=self.dialect)
 
         try:
             tokens = reader.tokenize()
@@ -609,12 +631,8 @@ class Compiler(object):
         else:
             tokens = expression
 
-        out = parse(tokens)
+        out = parse(tokens, dialect=self.dialect)
         return out
-
-    def tokenize(self, expression):
-        reader = _StringReader(expression)
-        return reader.tokenize()
 
     def compile(self, expression, context=None):
         """Compile the `expression`. `context` is an optional object passed to
