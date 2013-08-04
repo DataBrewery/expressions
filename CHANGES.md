@@ -21,5 +21,5 @@ Changes
 Fixes
 -----
 
-* none so far
+* fixed compilation of function calls
 

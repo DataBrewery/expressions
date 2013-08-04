@@ -291,7 +291,25 @@ class ValidatingCompiler(Compiler):
     def compile_operator(self, context, operator, op1, op2):
         pass
 
+class FunctionCompiler(Compiler):
+    def compile_variable(self, context, variable):
+        return variable
+    def compile_function(self, context, function, args):
+        return "CALL %s(%s)" % (function, ", ".join(args))
+
 class CompilerTestCase(unittest.TestCase):
     def test_validating_compiler(self):
         compiler = ValidatingCompiler()
-        result = compiler.compile("1+1", ["a", "b"])
+        result = compiler.compile("a+a", ["a", "b"])
+
+    def test_function_call_compile(self):
+        compiler = FunctionCompiler()
+
+        result = compiler.compile("f()")
+        self.assertEqual("CALL f()", result)
+
+        result = compiler.compile("f(x)")
+        self.assertEqual("CALL f(x)", result)
+
+        result = compiler.compile("f(x, y)")
+        self.assertEqual("CALL f(x, y)", result)

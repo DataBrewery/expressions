@@ -670,6 +670,7 @@ class Compiler(object):
             elif token.type == FUNCTION:
                 if token.argc:
                     args = stack[-token.argc:]
+                    del stack[-token.argc:]
                 else:
                     args = []
 
