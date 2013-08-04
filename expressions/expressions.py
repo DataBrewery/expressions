@@ -3,6 +3,8 @@
 import unicodedata
 from collections import namedtuple
 
+__version__ = "0.1.1"
+
 class ExpressionError(Exception):
     """Raised by the expression compiler"""
     pass
