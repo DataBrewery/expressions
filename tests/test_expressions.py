@@ -1,29 +1,30 @@
+# -*- encoding: utf8 -*-
 import unittest
 from expressions import *
 
 
 class StringReaderTestCase(unittest.TestCase):
     def test_tokenize_empty(self):
-        tokens = tokenize("")
+        tokens = tokenize(u"")
         self.assertEqual(0, len(tokens))
 
     def test_tokenize_whitespaces(self):
-        tokens = tokenize(" \n ")
+        tokens = tokenize(u" \n ")
         self.assertEqual(0, len(tokens))
 
-        tokens = tokenize("100")
+        tokens = tokenize(u"100")
         self.assertEqual(1, len(tokens))
 
-        tokens = tokenize("  100")
+        tokens = tokenize(u"  100")
         self.assertEqual(1, len(tokens))
 
-        tokens = tokenize("100  ")
+        tokens = tokenize(u"100  ")
         self.assertEqual(1, len(tokens))
 
-        tokens = tokenize("  100  ")
+        tokens = tokenize(u"  100  ")
         self.assertEqual(1, len(tokens))
 
-        tokens = tokenize("  1 + 1  ")
+        tokens = tokenize(u"  1 + 1  ")
         self.assertEqual(3, len(tokens))
 
     def assertFirstToken(self, string, expvalue, exptype, length=None):
@@ -45,19 +46,19 @@ class StringReaderTestCase(unittest.TestCase):
         self.assertSequenceEqual(types, exptypes)
 
     def test_integers(self):
-        self.assertFirstToken("100", 100, INTEGER)
-        self.assertFirstToken("100 ", 100, INTEGER)
-        self.assertFirstToken(" 100 ", 100, INTEGER)
+        self.assertFirstToken(u"100", 100, INTEGER)
+        self.assertFirstToken(u"100 ", 100, INTEGER)
+        self.assertFirstToken(u" 100 ", 100, INTEGER)
 
         with self.assertRaises(SyntaxError):
-            tokenize("10a")
+            tokenize(u"10a")
 
     def test_operators(self):
-        self.assertFirstToken("+", "+", OPERATOR, 1)
-        self.assertFirstToken("!=", "!=", OPERATOR, 1)
-        self.assertFirstToken("==", "==", OPERATOR, 1)
-        self.assertFirstToken("===", "==", OPERATOR, 2)
-        self.assertFirstToken("+*", "+", OPERATOR, 2)
+        self.assertFirstToken(u"+", u"+", OPERATOR, 1)
+        self.assertFirstToken(u"!=", u"!=", OPERATOR, 1)
+        self.assertFirstToken(u"==", u"==", OPERATOR, 1)
+        self.assertFirstToken(u"===", u"==", OPERATOR, 2)
+        self.assertFirstToken(u"+*", u"+", OPERATOR, 2)
 
     def test_keyword_operators(self):
         class case_insensitive_dialect(default_dialect):
@@ -69,85 +70,85 @@ class StringReaderTestCase(unittest.TestCase):
         register_dialect("case_insensitive", case_insensitive_dialect)
         register_dialect("case_sensitive", case_sensitive_dialect)
 
-        tokens = tokenize("parsley or rosemary and thyme", "case_sensitive")
+        tokens = tokenize(u"parsley or rosemary and thyme", "case_sensitive")
         types = [t.type for t in tokens]
         self.assertSequenceEqual([IDENTIFIER, OPERATOR, IDENTIFIER, OPERATOR,
                                     IDENTIFIER], types)
 
-        tokens = tokenize("AND and OR or", "case_sensitive")
+        tokens = tokenize(u"AND and OR or", "case_sensitive")
         types = [t.type for t in tokens]
         self.assertSequenceEqual([IDENTIFIER, OPERATOR, IDENTIFIER, OPERATOR],
                                  types)
 
-        tokens = tokenize("AND and OR or", "case_insensitive")
+        tokens = tokenize(u"AND and OR or", "case_insensitive")
         types = [t.type for t in tokens]
         self.assertSequenceEqual([OPERATOR, OPERATOR, OPERATOR, OPERATOR],
                                  types)
 
     def test_identifier(self):
-        self.assertFirstToken("parsley", "parsley", IDENTIFIER, 1)
-        self.assertFirstToken("_sage_10", "_sage_10", IDENTIFIER, 1)
-        self.assertFirstToken("rozmarín", "rozmarín", IDENTIFIER, 1)
+        self.assertFirstToken(u"parsley", u"parsley", IDENTIFIER, 1)
+        self.assertFirstToken(u"_sage_10", u"_sage_10", IDENTIFIER, 1)
+        self.assertFirstToken(u"rozmarín", u"rozmarín", IDENTIFIER, 1)
 
     def test_float(self):
-        self.assertFirstToken("10.", 10., FLOAT, 1)
-        self.assertFirstToken("10.20", 10.20, FLOAT, 1)
-        self.assertFirstToken("  10.", 10., FLOAT, 1)
+        self.assertFirstToken(u"10.", 10., FLOAT, 1)
+        self.assertFirstToken(u"10.20", 10.20, FLOAT, 1)
+        self.assertFirstToken(u"  10.", 10., FLOAT, 1)
 
-        self.assertFirstToken("10e20", 10e20, FLOAT, 1)
-        self.assertFirstToken("10.e30", 10.e30, FLOAT, 1)
-        self.assertFirstToken("10.20e30", 10.20e30, FLOAT, 1)
-        self.assertFirstToken("10.20e-30", 10.20e-30, FLOAT, 1)
-        self.assertFirstToken(" 1.2e-3 ", 1.2e-3, FLOAT, 1)
-        self.assertFirstToken(" 1.2e-3-", 1.2e-3, FLOAT, 2)
-        self.assertFirstToken(" 1.2-", 1.2, FLOAT, 2)
-
-        with self.assertRaises(SyntaxError):
-            tokenize("10.a")
+        self.assertFirstToken(u"10e20", 10e20, FLOAT, 1)
+        self.assertFirstToken(u"10.e30", 10.e30, FLOAT, 1)
+        self.assertFirstToken(u"10.20e30", 10.20e30, FLOAT, 1)
+        self.assertFirstToken(u"10.20e-30", 10.20e-30, FLOAT, 1)
+        self.assertFirstToken(u" 1.2e-3 ", 1.2e-3, FLOAT, 1)
+        self.assertFirstToken(u" 1.2e-3-", 1.2e-3, FLOAT, 2)
+        self.assertFirstToken(u" 1.2-", 1.2, FLOAT, 2)
 
         with self.assertRaises(SyntaxError):
-            tokenize("10ea")
+            tokenize(u"10.a")
 
         with self.assertRaises(SyntaxError):
-            tokenize("10e*")
+            tokenize(u"10ea")
+
+        with self.assertRaises(SyntaxError):
+            tokenize(u"10e*")
 
     def test_single(self):
-        self.assertFirstToken("(", "(", LPAREN, 1)
-        self.assertFirstToken("(1", "(", LPAREN, 2)
-        self.assertFirstToken("((", "(", LPAREN, 2)
-        self.assertFirstToken(")", ")", RPAREN, 1)
-        self.assertFirstToken(")1", ")", RPAREN, 2)
-        self.assertFirstToken(")(", ")", RPAREN, 2)
+        self.assertFirstToken(u"(", u"(", LPAREN, 1)
+        self.assertFirstToken(u"(1", u"(", LPAREN, 2)
+        self.assertFirstToken(u"((", u"(", LPAREN, 2)
+        self.assertFirstToken(u")", u")", RPAREN, 1)
+        self.assertFirstToken(u")1", u")", RPAREN, 2)
+        self.assertFirstToken(u")(", u")", RPAREN, 2)
 
-        self.assertFirstToken("[", "[", LBRACKET)
-        self.assertFirstToken("[]", "[", LBRACKET, 2)
-        self.assertFirstToken("]", "]", RBRACKET)
-        self.assertFirstToken(",", ",", COMMA)
-        self.assertFirstToken(";", ";", SEMICOLON)
-        self.assertFirstToken(":", ":", COLON)
+        self.assertFirstToken(u"[", u"[", LBRACKET)
+        self.assertFirstToken(u"[]", u"[", LBRACKET, 2)
+        self.assertFirstToken(u"]", u"]", RBRACKET)
+        self.assertFirstToken(u",", u",", COMMA)
+        self.assertFirstToken(u";", u";", SEMICOLON)
+        self.assertFirstToken(u":", u":", COLON)
 
     def test_mix(self):
-        self.assertTokens("100+", [100, "+"], [INTEGER, OPERATOR], 2)
-        self.assertTokens("+sage", ["+", "sage"], [OPERATOR, IDENTIFIER], 2)
-        self.assertTokens("sage+", ["sage", "+"], [IDENTIFIER, OPERATOR], 2)
-        self.assertTokens("10 - parsley+sage2 != _rosemary",
-                          [10, "-", "parsley", "+", "sage2", "!=", "_rosemary"],
+        self.assertTokens(u"100+", [100, u"+"], [INTEGER, OPERATOR], 2)
+        self.assertTokens(u"+sage", [u"+", u"sage"], [OPERATOR, IDENTIFIER], 2)
+        self.assertTokens(u"sage+", [u"sage", u"+"], [IDENTIFIER, OPERATOR], 2)
+        self.assertTokens(u"10 - parsley+sage2 != _rosemary",
+                          [10, u"-", u"parsley", u"+", u"sage2", u"!=", u"_rosemary"],
                           [INTEGER, OPERATOR, IDENTIFIER, OPERATOR,
                               IDENTIFIER, OPERATOR, IDENTIFIER], 7)
 
     def test_string(self):
-        self.assertFirstToken("'thyme'", "thyme", STRING)
-        self.assertFirstToken('"thyme"', "thyme", STRING)
+        self.assertFirstToken(u"'thyme'", u"thyme", STRING)
+        self.assertFirstToken(u'"thyme"', u"thyme", STRING)
 
-        self.assertFirstToken("'parsley rosemary'", "parsley rosemary", STRING)
-        self.assertFirstToken('"parsley rosemary"', "parsley rosemary", STRING)
+        self.assertFirstToken(u"'parsley rosemary'", u"parsley rosemary", STRING)
+        self.assertFirstToken(u'"parsley rosemary"', u"parsley rosemary", STRING)
 
-        self.assertFirstToken('"quote \\""', 'quote \\"', STRING)
+        self.assertFirstToken(u'"quote \\""', u'quote \\"', STRING)
         with self.assertRaises(SyntaxError):
-            tokenize("'not good")
+            tokenize(u"'not good")
 
         with self.assertRaises(SyntaxError):
-            tokenize("'not good\"")
+            tokenize(u"'not good\"")
 
 class ParserTestCase(unittest.TestCase):
     def assertTokens(self, string, expvalues, exptypes, length=None):

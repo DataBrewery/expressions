@@ -2,8 +2,25 @@
 
 import unicodedata
 from collections import namedtuple
+import sys
 
-__version__ = "0.1.1"
+
+__version__ = "0.1.2"
+
+
+# Python 2 compatibility
+#
+PY2 = sys.version_info[0] == 2
+
+if not PY2:
+    text_type = str
+    string_types = (str,)
+else:
+    text_type = unicode
+    string_types = (str, unicode)
+
+
+# - end of compatibility -
 
 class ExpressionError(Exception):
     """Raised by the expression compiler"""
@@ -62,13 +79,13 @@ LITERAL = 'const'
 VARIABLE = 'var'
 FUNCTION = 'func'
 
-LPAREN = '('
-RPAREN = ')'
-LBRACKET = '['
-RBRACKET = ']'
-COMMA = ','
-COLON = ':'
-SEMICOLON = ';'
+LPAREN = u'('
+RPAREN = u')'
+LBRACKET = u'['
+RBRACKET = u']'
+COMMA = u','
+COLON = u':'
+SEMICOLON = u';'
 
 # Unicode categories
 # Source: http://www.unicode.org/Public/5.1.0/ucd/UCD.html#General_Category_Values
@@ -81,7 +98,7 @@ CAT_SYMBOL = 'S'
 SUBCAT_MATH = 'm'
 
 # Do not expose this to the dialect, predefine identifier patterns instead
-IDENTIFIER_START_CHARS = '_' # TODO: add @
+IDENTIFIER_START_CHARS = u'_' # TODO: add @
 CAT_IDENTIFIER = CAT_NUMBER + CAT_LETTER
 STRING_ESCAPE_CHAR = '\\'
 
@@ -119,8 +136,8 @@ class Dialect(object):
 
         plain_operators = [op for op in opnames if op not in self.keyword_operators]
 
-        characters = "".join(plain_operators)
-        characters = "".join(set(characters))
+        characters = u"".join(plain_operators)
+        characters = u"".join(set(characters))
         self.operator_characters = characters
 
         composed_ops = [op for op in plain_operators if len(op) > 1]
@@ -135,27 +152,27 @@ class Dialect(object):
 #
 class default_dialect(Dialect):
     operators = {
-        "^": (1000, RIGHT, BINARY),
-        "*": (900, LEFT, BINARY),
-        "/": (900, LEFT, BINARY),
-        "%": (900, LEFT, BINARY),
+        u"^": (1000, RIGHT, BINARY),
+        u"*": (900, LEFT, BINARY),
+        u"/": (900, LEFT, BINARY),
+        u"%": (900, LEFT, BINARY),
 
-        "+":  (500, LEFT, BINARY),
-        "-":  (500, LEFT, UNARY | BINARY),
+        u"+":  (500, LEFT, BINARY),
+        u"-":  (500, LEFT, UNARY | BINARY),
 
-        "&":  (300, LEFT, BINARY),
-        "|":  (300, LEFT, BINARY),
+        u"&":  (300, LEFT, BINARY),
+        u"|":  (300, LEFT, BINARY),
 
-        "<":  (200, LEFT, BINARY),
-        "<=": (200, LEFT, BINARY),
-        ">":  (200, LEFT, BINARY),
-        ">=": (200, LEFT, BINARY),
-        "!=": (200, LEFT, BINARY),
-        "==": (200, LEFT, BINARY),
+        u"<":  (200, LEFT, BINARY),
+        u"<=": (200, LEFT, BINARY),
+        u">":  (200, LEFT, BINARY),
+        u">=": (200, LEFT, BINARY),
+        u"!=": (200, LEFT, BINARY),
+        u"==": (200, LEFT, BINARY),
 
-        "not": (120, LEFT, UNARY),
-        "and": (110, LEFT, BINARY),
-        "or":  (100, LEFT, BINARY),
+        u"not": (120, LEFT, UNARY),
+        u"and": (110, LEFT, BINARY),
+        u"or":  (100, LEFT, BINARY),
     }
     case_sensitive = False
 
@@ -186,7 +203,7 @@ def parse(expression, dialect="default"):
     """Parses the `expressions` which might be a string or a list of tokens
     from `tokenize()`."""
 
-    if isinstance(expression, str):
+    if isinstance(expression, string_types):
         tokens = tokenize(expression, dialect)
 
     else:
@@ -198,7 +215,7 @@ def parse(expression, dialect="default"):
 
 class _StringReader(object):
     def __init__(self, string, dialect="default"):
-        self.string = string
+        self.string = text_type(string)
         self.length = len(string)
         self.pos = 0
         self.char = None
@@ -251,8 +268,13 @@ class _StringReader(object):
         else:
             return None
 
+    # Python 3:
     def __bool__(self):
         return self.pos < self.length
+
+    if PY2:
+        def __nonzero__(self):
+            return self.__bool__()
 
     def skip_whitespace(self):
         """Moves the reader to the first non-whitespace character."""
@@ -286,7 +308,7 @@ class _StringReader(object):
         token_type = INTEGER
         self.consume(category=CAT_NUMBER)
 
-        if self.peek() == ".":
+        if self.peek() == u".":
             token_type = FLOAT
             self.next()
 
@@ -298,10 +320,10 @@ class _StringReader(object):
         if self.at_end():
             return token_type
 
-        if self.peek() in "eE":
+        if self.peek() in u"eE":
             token_type = FLOAT
             self.next()
-            if self.peek() in "+-":
+            if self.peek() in u"+-":
                 self.next()
             elif self.peek_category() != CAT_NUMBER:
                 raise SyntaxError("Number expected after exponent")
@@ -341,6 +363,11 @@ class _StringReader(object):
 
             token_type = None
             start = self.pos
+
+            # FIXME: XXX
+            if not self.char:
+                raise Exception("No character at %s for '%s'" % (self.pos,
+                    self.string ))
 
             # Integer
             if self.category == CAT_NUMBER:
@@ -628,7 +655,7 @@ class Compiler(object):
         number of function arguments.
         """
 
-        if isinstance(expression, str):
+        if isinstance(expression, string_types):
             tokens = self.tokenize(expression)
         else:
             tokens = expression

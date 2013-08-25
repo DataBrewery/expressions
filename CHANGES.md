@@ -2,6 +2,12 @@
 Changes in Expressions
 ++++++++++++++++++++++
 
+Version 0.1.2
+=============
+
+* added chance to finalize the compilation object
+* back-ported to Python 2.x
+
 Version 0.1.1
 =============
 
