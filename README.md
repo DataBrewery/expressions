@@ -11,8 +11,8 @@ Sources
 
 Github: https://github.com/Stiivi/expressions
 
-Requires at least Python 3.3. No other dependencies. No dependencies planned –
-Python-only framework.
+Works with Python 2.7 and Python 3.3. No other dependencies. No dependencies
+planned – Python-only framework.
 
 Use
 ---
