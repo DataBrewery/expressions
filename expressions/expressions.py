@@ -686,5 +686,10 @@ class Compiler(object):
         if len(stack) != 1:
             raise RuntimeError("Stack has %s items, should have 1" % len(stack))
 
-        return stack[-1]
+        return self.finalize(context, stack[0])
+
+    def finalize(self, context, obj):
+        """Give a chance to return final object. Default implementation returs
+        the last compiled object."""
+        return obj
 
