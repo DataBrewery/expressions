@@ -90,6 +90,27 @@ class StringReaderTestCase(unittest.TestCase):
         self.assertFirstToken(u"_sage_10", u"_sage_10", IDENTIFIER, 1)
         self.assertFirstToken(u"rozmarín", u"rozmarín", IDENTIFIER, 1)
 
+    def test_identifier_dialect(self):
+        class dot_path_dialect(default_dialect):
+            identifier_start_characters = u"_@"
+            identifier_characters = u"_."
+
+        register_dialect("dot_path_dialect", dot_path_dialect)
+
+        tokens = tokenize(u"date date.month local.date.month", "dot_path_dialect")
+
+        types = [t.type for t in tokens]
+        names = [t.value for t in tokens]
+        self.assertSequenceEqual([IDENTIFIER, IDENTIFIER, IDENTIFIER], types)
+        self.assertSequenceEqual(["date", "date.month", "local.date.month"], names)
+
+        tokens = tokenize(u"@date @date.month", "dot_path_dialect")
+
+        types = [t.type for t in tokens]
+        names = [t.value for t in tokens]
+        self.assertSequenceEqual([IDENTIFIER, IDENTIFIER], types)
+        self.assertSequenceEqual(["@date", "@date.month"], names)
+
     def test_float(self):
         self.assertFirstToken(u"10.", 10., FLOAT, 1)
         self.assertFirstToken(u"10.20", 10.20, FLOAT, 1)

@@ -97,9 +97,6 @@ CAT_LETTER = 'L'
 CAT_SYMBOL = 'S'
 SUBCAT_MATH = 'm'
 
-# Do not expose this to the dialect, predefine identifier patterns instead
-IDENTIFIER_START_CHARS = u'_' # TODO: add @
-CAT_IDENTIFIER = CAT_NUMBER + CAT_LETTER
 STRING_ESCAPE_CHAR = '\\'
 
 UNARY = 1
@@ -112,6 +109,11 @@ LEFT = 2
 class Dialect(object):
     operators = None
     case_sensitive = None
+
+    identifier_start_characters = None
+    identifier_start_category = CAT_LETTER
+    identifier_characters = None
+    identifier_category = CAT_NUMBER + CAT_LETTER
 
     # Instance variables:
     # keyword_operators = []
@@ -142,6 +144,11 @@ class Dialect(object):
 
         composed_ops = [op for op in plain_operators if len(op) > 1]
         self.composed_operators = composed_ops
+
+        self.identifier_start_characters = self.identifier_start_characters or u""
+        self.identifier_start_category = self.identifier_start_category or u""
+        self.identifier_characters = self.identifier_characters or u""
+        self.identifier_category = self.identifier_category or u""
 
 # Default Dialect
 #
@@ -175,6 +182,11 @@ class default_dialect(Dialect):
         u"or":  (100, LEFT, BINARY),
     }
     case_sensitive = False
+
+    identifier_start_characters = u"_"
+    identifier_start_category = CAT_LETTER
+    identifier_characters = u"_"
+    identifier_category = CAT_NUMBER + CAT_LETTER
 
 _dialects = {
         "default": default_dialect()
@@ -374,14 +386,15 @@ class _StringReader(object):
                 token_type = self.consume_numeric()
 
             # Identifier
-            elif self.category == CAT_LETTER \
-                    or self.char in IDENTIFIER_START_CHARS:
+            elif self.category in self.dialect.identifier_start_category \
+                    or self.char in self.dialect.identifier_start_characters:
 
                 token_type = IDENTIFIER
 
-                if self.char in IDENTIFIER_START_CHARS:
-                    self.next()
-                self.consume(CAT_IDENTIFIER, IDENTIFIER_START_CHARS)
+                self.next()
+
+                self.consume(self.dialect.identifier_category,
+                             self.dialect.identifier_characters)
 
             # Operator
             elif self.char in self.dialect.operator_characters:
