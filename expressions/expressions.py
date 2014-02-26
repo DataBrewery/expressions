@@ -36,6 +36,7 @@ __all__ = (
 
             "Compiler",
             "ExpressionError",
+            "Dialect",
             "Operator",
 
             "RIGHT",
@@ -150,6 +151,9 @@ class Dialect(object):
         self.identifier_characters = self.identifier_characters or u""
         self.identifier_category = self.identifier_category or u""
 
+    def operator(self, name):
+        return self.operators[name]
+
 # Default Dialect
 #
 # Use the same structure as we require from dialect implementors, then cache
@@ -197,8 +201,11 @@ def register_dialect(name, dialect):
         raise RuntimeError("Dialect %s already registered", name)
     _dialects[name] = dialect()
 
-def get_dialect(name):
-    return _dialects[name]
+def get_dialect(dialect):
+    if issubclass(dialect, Dialect):
+        return dialect()
+    else:
+        return _dialects[dialect]
 
 def unregister_dialect(name):
     del _dialects[name]
@@ -727,6 +734,21 @@ class Compiler(object):
             raise RuntimeError("Stack has %s items, should have 1" % len(stack))
 
         return self.finalize(context, stack[0])
+
+    def compile_literal(self, context, literal):
+        return None
+
+    def compile_variable(self, context, variable):
+        return None
+
+    def compile_unary(self, context, operator, operand):
+        return None
+
+    def compile_operator(self, context, operator, op1, op2):
+        return None
+
+    def compile_function(self, context, function, args):
+        return None
 
     def finalize(self, context, obj):
         """Give a chance to return final object. Default implementation returs
