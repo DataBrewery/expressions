@@ -8,7 +8,6 @@ from grako.exceptions import FailedSemantics
 
 __all__ = [
         "Compiler",
-        "Literal",
         "Variable",
         "Function",
         "BinaryOperator",
@@ -43,17 +42,6 @@ class Variable(Node):
 
     def __repr__(self):
         return "Variable({.name})".format(self)
-
-
-class Literal(Node):
-    def __init__(self, value):
-        self.value = value
-
-    def __str__(self):
-        return str(self.value)
-
-    def __repr__(self):
-        return "Literal({.value})".format(self)
 
 
 class UnaryOperator(Node):
@@ -97,14 +85,14 @@ class _ExpressionSemantics(object):
         self.context = context
 
     def _default(self, ast, node_type=None, *args):
-        print("-->[{}, {}] {}".format(node_type, args, ast))
+        # print("-->[{}, {}] {}".format(node_type, args, ast))
 
         if isinstance(ast, _Result):
-            print("<-O {} {}".format(type(ast.value), ast))
+            # print("<-O {} {}".format(type(ast.value), ast))
             return ast
 
         if not node_type:
-            print("<-N  {}".format(ast))
+            # print("<-N  {}".format(ast))
             return ast
 
         elif node_type == "unary":
@@ -134,32 +122,32 @@ class _ExpressionSemantics(object):
         else:
             raise Exception("Unknown node type '{}'".format(node_type))
 
-        print("<--  {}".format(ast))
+        # print("<--  {}".format(ast))
         if isinstance(result, _Result):
             import pdb; pdb.set_trace()
         return _Result(result)
 
     def variable(self, ast):
-        print("--- variable: {}".format(ast))
+        # print("--- variable: {}".format(ast))
         import pdb; pdb.set_trace()
         value = ast
         result = self.compiler.compile_variable(self.context, value)
         return _Result(result)
 
     def reference(self, ast):
-        print("--- ref: {}".format(ast))
+        # print("--- ref: {}".format(ast))
         return _Result(Variable(ast))
 
     def function(self, ast):
-        print("--- function: {}".format(ast))
+        # print("--- function: {}".format(ast))
         ref = ast.ref.value
-        args = [arg.value for arg in ast.args]
+        args = [arg.value for arg in ast.args or []]
         result = self.compiler.compile_function(self.context, ref, args)
 
         return _Result(result)
 
     def NUMBER(self, ast):
-        print("--- number: {}".format(ast))
+        # print("--- number: {}".format(ast))
         try:
             value = int(ast)
         except ValueError:
@@ -170,8 +158,9 @@ class _ExpressionSemantics(object):
         return _Result(result)
 
     def STRING(self, ast):
-        print("--- string: {}".format(ast))
-        value = str(ast)
+        # print("--- string: {}".format(ast))
+        # Strip the surrounding quotes
+        value = str(ast[1:-1]).decode("string-escape")
 
         result = self.compiler.compile_literal(self.context, value)
         return _Result(result)
@@ -212,8 +201,8 @@ class Compiler(object):
 
     def compile_literal(self, context, literal):
         """Compile a literal object such as number or a string. Default
-        implementation returns `Literal` object with attribute `value`."""
-        return Literal(literal)
+        implementation returns a string or numeric object."""
+        return literal
 
     def compile_variable(self, context, reference):
         """Compile variable `reference`. Default implementation returns
@@ -248,6 +237,7 @@ class Compiler(object):
         Subclasses can override this method if they want to wrap the result
         object in another object or to finalize collected statement analysis."""
         return obj
+
 
 if __name__ == "__main__":
     compiler = Compiler()
