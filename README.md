@@ -69,6 +69,34 @@ This will fail, because only `a` and `b` are allowed, `c` is not:
 
     result = compiler.compile("a + c", allowed_variables)
 
+Syntax
+======
+
+Example expressions:
+
+```sql
+    1 + 1
+    (a + b) ^ 2
+    sum(amount) / count()
+    date.year = 2010 and amount > 10
+```
+
+* Binary arithmetic operators: `+`, `-`, `*`, `/`, `%` (modulo), `^` (power)
+* Binary comparison operators: `<`, `<=`, `=`, `>=`, `>`, `in`, `is`
+* Binary bit-wise operators: `|` (or), `&` (and), `<<` (shift left), `>>` (shift right)
+* Binary logical operators: `and`, `or`
+* Unary operators: `+`, `-`, `~` (bit-wise not)
+
+* Function call: `function_name(arg1, arg2, ...)`
+
+*Variable* and *function* names are either regular identifiers or identifiers
+separated by `.`. There is no value dereference and the dot `.` is just
+namespace composition operator for variable names. Example variable names:
+`amount`, `date.year`, `product.name`.
+
+The suggested meaning of the operators is based mostly on the
+[PostgreSQL operators](http://www.postgresql.org/docs/9.0/static/functions.html)
+
 Writing a compiler
 ==================
 
@@ -88,7 +116,8 @@ some of the following methods:
 * *compile_variable(context, variable)* – compile a variable reference
   `variable` which is an object with properties `name` and `reference`. `name`
   is the full variable name (joined with `.`), `reference` is a list of
-  variable name components
+  variable name components. Return value should be either evaluated variable
+  as a constant or some other useful variable reference.
 * *compile_literal(context, literal)* – compile an integer, float or a string
   object `literal`. Default implementation just passes the argument. You
   rarely need to override this method.
