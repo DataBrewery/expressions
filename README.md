@@ -1,32 +1,34 @@
 Expressions
 ===========
 
-Lightweight arithmetic expression parser for creating simple arithmetic
-expression compilers.
+Arithmetic expression parser library.  Embed customized expression evaluation
+into your application or library. Example uses:
 
-Part of the Data Brewery at http://databrewery.org
+* precompiler that checks for allowed and denied identifiers in an expression
+* have a common expression language through your application regardless of the
+  backend languages
+* compile arithmetic expression to any other expression tree (semantic), for
+  example [SQLAlchemy](http://docs.sqlalchemy.org/en/rel_0_7/core/expression_api.html) expression objects
 
-Sources
+
+Part of the [Data Brewery](http://databrewery.org)
+
+Installation
+------------
+
+Install using pip:
+
+    pip install expressions
+
+Expressions sources are available at [Github](https://github.com/Stiivi/expressions)
+
+Works with Python 2.7 and Python 3.3. Uses [Grako](https://bitbucket.org/apalala/grako).
+
+Example
 -------
 
-Github: https://github.com/Stiivi/expressions
-
-Works with Python 2.7 and Python 3.3. No other dependencies. No dependencies
-planned – Python-only framework.
-
-Use
----
-
-Embed custom expression evaluation into your application. Example uses:
-
-* variable checking compiler with allow/deny mechanism
-* unification of functions and variables if your app provides multiple
-  backends which might provide expression evaluation functionality
-* compiler for custom object structures, such as for frameworks providing
-  functional-programing like interface
-
-Create a compiler that allows only certain variables. The list of allowed
-variables is provided in the compilation context:
+Here is an example compiler that allows only certain variables. The list of
+allowed variables is provided in the compilation context:
 
     from expressions import Compiler, ExpressionError
 
@@ -37,7 +39,7 @@ variables is provided in the compilation context:
         def compile_variable(self, context, variable):
             if context and variable not in context:
                 raise ExpressionError("Variable %s is not allowed" % variable)
-
+ 
             return variable
 
         def compile_operator(self, context, operator, op1, op2):
@@ -68,33 +70,59 @@ This will fail, because only `a` and `b` are allowed, `c` is not:
 Writing a compiler
 ==================
 
-To write a custom compiler subclass a `Compiler` class and implement the
-following methods:
+To write a custom compiler subclass a `Compiler` class and implement all of
+some of the following methods:
 
-* `compile_literal` taking a number or a string object
-* `compile_variable` taking a variable name
-* `compile_operator` taking a binary operator and two operands
-* `compile_unary` taking an unary operator and one operand
-* `compile_function` taking a function name and list of arguments
+* *compile_function(context, reference, args)* – compile a function call. The
+  `reference` is the same kind of object as passed to the
+  *compile_variable()*, `args` is list of function arguments. Default
+  implementation returns an object with attributes `reference` and `args`
+* *compile_operator(context, operator, left, right)* – compile a binary
+  operator `operator` with two operands `left` and `right`. Default
+  implementation returns an object with attributes `operator`, `left` and `right`
+* *compile_unary(context, operator, operand)* – compile a unary `operator` with
+  a single `operand`. Default implementation returns an object with attributes
+  `operator` and `operand`.
+* *compile_variable(context, variable)* – compile a variable reference
+  `variable` which is an object with properties `name` and `reference`. `name`
+  is the full variable name (joined with `.`), `reference` is a list of
+  variable name components
+* *compile_literal(context, literal)* – compile an integer, float or a string
+  object `literal`. Default implementation just passes the argument. You
+  rarely need to override this method.
+* *finalize(context, object)* – return the final compilation result.
 
-Template:
 
-    class MyCompiler(Compiler):
-        def compile_literal(self, context, literal):
-            pass
-        def compile_variable(self, context, variable):
-            pass
-        def compile_operator(self, context, operator, op1, op2):
-            pass
-        def compile_unary(self, context, operator, operand):
-            pass
-        def compile_function(self, context, function, args):
-            pass
+When compiling function arguments or operator operands you should check
+whether they are literals or instances of a `Variable`. For example:
 
-To-do
------
+    def compile_function(context, reference, args):
+        # Assume that the context is a dictionary with variables and functions
 
-Stay lightweight and simple.
+        values = []
+        for arg in args:
+            if isinstance(arg, Variable):
+                value = context[arg.name]
+            else:
+                value = arg
+            values.append(value)
+
+        function = context[reference.name]
+
+        return function(*args)
+
+Classes
+=======
+
+The following classes are provided by the library:
+
+* *Compiler* – core compiler class that generates default structure,
+  `compile_*` methods can be overriden to generate custom results
+* *IdentifierPreprocessor* – a *Compiler* subclass with two attributes
+  `variables` and `functions` containing list of `Variable` objects collected
+  from the compiled expression. Can be used for validation or preparation of
+  variables
+
 
 License
 -------
@@ -108,4 +136,5 @@ Author
 ------
 
 Stefan Urbanek, stefan.urbanek@gmail.com, Twitter: @Stiivi
+
 
