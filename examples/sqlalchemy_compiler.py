@@ -1,3 +1,5 @@
+# -*- encoding: utf8 -*-
+
 from expressions import Compiler
 from sqlalchemy import create_engine, MetaData, Table, Integer, Column
 from sqlalchemy import sql
@@ -25,9 +27,9 @@ class SQLAlchemyExpressionCompiler(Compiler):
         """Compile a variable – in our case it refers to a column of a
         SQL table or a SQL statement. The statement is our context of
         compilation."""
-        return context.c[variable]
+        return context.c[variable.name]
 
-    def compile_operator(self, context, operator, op1, op2):
+    def compile_binary(self, context, operator, op1, op2):
         """Return SQLAlchemy object construct using an operator."""
 
         if operator == "+":

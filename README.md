@@ -43,7 +43,7 @@ allowed variables is provided in the compilation context:
  
             return variable
 
-        def compile_operator(self, context, operator, op1, op2):
+        def compile_binary(self, context, operator, op1, op2):
             return "(%s %s %s)" % (op1, operator, op2)
 
         def compile_function(self, context, function, args):
@@ -79,7 +79,7 @@ some of the following methods:
   `reference` is the same kind of object as passed to the
   *compile_variable()*, `args` is list of function arguments. Default
   implementation returns an object with attributes `reference` and `args`
-* *compile_operator(context, operator, left, right)* – compile a binary
+* *compile_binary(context, operator, left, right)* – compile a binary
   operator `operator` with two operands `left` and `right`. Default
   implementation returns an object with attributes `operator`, `left` and `right`
 * *compile_unary(context, operator, operand)* – compile a unary `operator` with
