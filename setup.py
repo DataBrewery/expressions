@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "expressions",
-    version = "0.1.2",
+    version = "0.2",
 
     packages = find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     package_data = {
@@ -26,7 +26,7 @@ setup(
     # metadata for upload to PyPI
     author = "Stefan Urbanek",
     author_email = "stefan.urbanek@gmail.com",
-    description = "Simple abstract parser for arithmetic expressions with slightly customizable syntax. Provides mechanisms for custom execution or compilation into custom structures.",
+    description = "Extensible arithmetic expression parser and compiler",
     license = "MIT license",
     keywords = "arithmetic expression",
     url = "http://databrewery.org"
