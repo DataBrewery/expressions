@@ -20,7 +20,7 @@ Install using pip:
 
     pip install expressions
 
-Expressions sources are available at [Github](https://github.com/Stiivi/expressions)
+Expressions sources are available at [Github](https://github.com/DataBrewery/expressions)
 
 Works with Python 2.7 and Python 3.3. Uses [Grako](https://bitbucket.org/apalala/grako).
 
