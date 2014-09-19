@@ -10,7 +10,7 @@ and_expr(binary) = shift_expr { '&' shift_expr };
 shift_expr(binary) = arith_expr { ('<<' | '>>') arith_expr };
 
 arith_expr(binary) = term {('+' | '-') term} ;
-term(binary) = factor {('*' | '/' | '%' | '//') factor} ;
+term(binary) = factor {('*' | '/' | '%') factor} ;
 factor(unary) = ('+' | '-' | '~') factor | power ;
 power = atom ['^' factor] ;
 
@@ -30,7 +30,7 @@ reference = { @+:NAME '.'} @+:NAME;
 NUMBER = ?/[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/? ;
 STRING = ?/'[^'\\\r\n]*(?:\\.[^'\\\r\n]*)*'/? ;
 
-comparison_operator = ('==' | '!=' | '<' | '<=' | '>' | '>='
+comparison_operator = ('=' | '!=' | '<' | '<=' | '>' | '>='
                        | 'in' | 'is' );
 
 (* Allow any unicode character to be an identifier *)
@@ -40,4 +40,5 @@ NAME = ?/\w+/?;
 
  – array subscript '[' low [ ':' high ] ']'
  – not in, is not
+ – || string concatenation operator
 *)
