@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2014, 9, 19, 7, 1, 47, 4)
+__version__ = (2014, 9, 19, 12, 59, 50, 4)
 
 __all__ = [
     'ExpressionParser',

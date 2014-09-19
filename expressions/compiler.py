@@ -11,16 +11,16 @@ __all__ = [
         "Literal",
         "Variable",
         "Function",
+        "BinaryOperator",
+        "UnaryOperator",
+        "Node"
     ]
 
 
-class ASTNode(object):
+class Node(object):
     pass
 
-class Atom(ASTNode):
-    pass
-
-class Function(Atom):
+class Function(Node):
     def __init__(self, variable, args):
         self.reference = variable.reference
         self.name = variable.name
@@ -33,7 +33,7 @@ class Function(Atom):
         return "{}({})".format(self.name, ", ".join(repr(a) for a in self.args))
 
 
-class Variable(Atom):
+class Variable(Node):
     def __init__(self, reference):
         self.reference = reference
         self.name = ".".join(self.reference)
@@ -45,7 +45,7 @@ class Variable(Atom):
         return "Variable({.name})".format(self)
 
 
-class Literal(Atom):
+class Literal(Node):
     def __init__(self, value):
         self.value = value
 
@@ -56,7 +56,7 @@ class Literal(Atom):
         return "Literal({.value})".format(self)
 
 
-class UnaryOperator(ASTNode):
+class UnaryOperator(Node):
     def __init__(self, operator, operand):
         self.operator = operator
         self.operand = operand
@@ -68,7 +68,7 @@ class UnaryOperator(ASTNode):
         return "Unary({0.operator!r}, {0.operand!r})".format(self)
 
 
-class BinaryOperator(ASTNode):
+class BinaryOperator(Node):
     def __init__(self, operator, left, right):
         self.operator = operator
         self.left = left
@@ -81,13 +81,13 @@ class BinaryOperator(ASTNode):
         return "Binary({0.left!r}, {0.operator!r}, {0.right!r})".format(self)
 
 
-class Node(object):
+class _Result(object):
     def __init__(self, value):
         self.value = value
     def __str__(self):
         return str(self.value)
     def __repr__(self):
-        return "Node({})".format(repr(self.value))
+        return "_Result({})".format(repr(self.value))
 
 
 class _ExpressionSemantics(object):
@@ -99,7 +99,7 @@ class _ExpressionSemantics(object):
     def _default(self, ast, node_type=None, *args):
         print("-->[{}, {}] {}".format(node_type, args, ast))
 
-        if isinstance(ast, Node):
+        if isinstance(ast, _Result):
             print("<-O {} {}".format(type(ast.value), ast))
             return ast
 
@@ -123,36 +123,32 @@ class _ExpressionSemantics(object):
                 # Get the object's value
                 right = right.value
 
-                left = self.compiler.compile_operator(self.context,
-                                                      op,
-                                                      left,
-                                                      right)
+                left = self.compiler.compile_binary(self.context, op,
+                                                    left, right)
             result = left
 
         elif node_type == "binarynr":
             left, operator, right = ast
-            result = self.compiler.compile_operator(self.context,
-                                                    operator,
-                                                    left.value,
-                                                    right.value)
+            result = self.compiler.compile_binary(self.context, operator,
+                                                  left.value, right.value)
         else:
             raise Exception("Unknown node type '{}'".format(node_type))
 
         print("<--  {}".format(ast))
-        if isinstance(result, Node):
+        if isinstance(result, _Result):
             import pdb; pdb.set_trace()
-        return Node(result)
+        return _Result(result)
 
     def variable(self, ast):
         print("--- variable: {}".format(ast))
         import pdb; pdb.set_trace()
         value = ast
         result = self.compiler.compile_variable(self.context, value)
-        return Node(result)
+        return _Result(result)
 
     def reference(self, ast):
         print("--- ref: {}".format(ast))
-        return Node(Variable(ast))
+        return _Result(Variable(ast))
 
     def function(self, ast):
         print("--- function: {}".format(ast))
@@ -160,7 +156,7 @@ class _ExpressionSemantics(object):
         args = [arg.value for arg in ast.args]
         result = self.compiler.compile_function(self.context, ref, args)
 
-        return Node(result)
+        return _Result(result)
 
     def NUMBER(self, ast):
         print("--- number: {}".format(ast))
@@ -171,14 +167,14 @@ class _ExpressionSemantics(object):
 
         result = self.compiler.compile_literal(self.context, value)
 
-        return Node(result)
+        return _Result(result)
 
     def STRING(self, ast):
         print("--- string: {}".format(ast))
         value = str(ast)
 
         result = self.compiler.compile_literal(self.context, value)
-        return Node(result)
+        return _Result(result)
 
     def NAME(self, ast):
         if ast.lower() in self.keywords:
@@ -210,7 +206,7 @@ class Compiler(object):
                  ignorecase=False,
                  semantics=_ExpressionSemantics(self, context))
 
-        # Result is of type Node
+        # Result is of type _Result
 
         return self.finalize(context, result.value)
 
@@ -224,7 +220,7 @@ class Compiler(object):
         `Variable` object."""
         return Variable(reference)
 
-    def compile_operator(self, context, operator, left, right):
+    def compile_binary(self, context, operator, left, right):
         """Compile `operator` with operands `left` and `right`. Default
         implementation returns `BinaryOperator` object with attributes
         `operator`, `left` and `right`."""
@@ -255,6 +251,6 @@ class Compiler(object):
 
 if __name__ == "__main__":
     compiler = Compiler()
-    result = compiler.compile('a < 10 < 20 + 20')
+    result = compiler.compile("a is not b")
     print("RESULT: ", result)
     print("REPR  : ", repr(result))
