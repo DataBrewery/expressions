@@ -30,6 +30,7 @@ Example
 Here is an example compiler that allows only certain variables. The list of
 allowed variables is provided in the compilation context:
 
+```python
     from expressions import Compiler, ExpressionError
 
     class AllowingCompiler(Compiler):
@@ -48,6 +49,7 @@ allowed variables is provided in the compilation context:
         def compile_function(self, context, function, args):
             arglist = ", " % args
             return "%s(%s)" % (function, arglist)
+```
 
 Allow only `a` and `b` variables:
 
@@ -96,6 +98,7 @@ some of the following methods:
 When compiling function arguments or operator operands you should check
 whether they are literals or instances of a `Variable`. For example:
 
+```python
     def compile_function(context, reference, args):
         # Assume that the context is a dictionary with variables and functions
 
@@ -110,6 +113,28 @@ whether they are literals or instances of a `Variable`. For example:
         function = context[reference.name]
 
         return function(*args)
+```
+
+Example compiler: Identifier Preprocessor
+
+The following compiler is included in the library:
+
+```python
+    class IdentifierPreprocessor(Compiler):
+        def __init__(self):
+            super(IdentifierPreprocessor, self).__init__()
+
+            self.variables = set()
+            self.functions = set()
+
+        def compile_variable(self, context, variable):
+            self.variables.add(variable)
+            return variable
+
+        def compile_function(self, context, function, args):
+            self.functions.add(function)
+            return function
+```
 
 Classes
 =======
