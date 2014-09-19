@@ -17,9 +17,10 @@ power = atom ['^' factor] ;
 atom = NUMBER 
         | STRING 
         | function
-        | reference
+        | variable
         | ( '(' @:test ')' );
 
+variable = reference;
 function = ref:reference '(' [ args:arglist ] ')';
 arglist = { @+:argument ','} @+:argument;
 argument = test;

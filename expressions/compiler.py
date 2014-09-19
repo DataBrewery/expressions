@@ -8,6 +8,7 @@ from grako.exceptions import FailedSemantics
 
 __all__ = [
         "Compiler",
+        "IdentifierPreprocessor",
         "Variable",
         "Function",
         "BinaryOperator",
@@ -34,6 +35,11 @@ class Function(Node):
 
 class Variable(Node):
     def __init__(self, reference):
+        """Creates a variable reference. Attributes: `reference` – variable
+        reference as a list of variable parts and `name` as a full variable
+        name. This object is passed to the `compile_variable()` and
+        `compile_function()`"""
+
         self.reference = reference
         self.name = ".".join(self.reference)
 
@@ -70,6 +76,9 @@ class BinaryOperator(Node):
 
 
 class _Result(object):
+    """Wrapper class for compilation result. We need this to properly
+    distinguish between our result and delegated results."""
+
     def __init__(self, value):
         self.value = value
     def __str__(self):
@@ -85,14 +94,11 @@ class _ExpressionSemantics(object):
         self.context = context
 
     def _default(self, ast, node_type=None, *args):
-        # print("-->[{}, {}] {}".format(node_type, args, ast))
 
         if isinstance(ast, _Result):
-            # print("<-O {} {}".format(type(ast.value), ast))
             return ast
 
         if not node_type:
-            # print("<-N  {}".format(ast))
             return ast
 
         elif node_type == "unary":
@@ -103,7 +109,6 @@ class _ExpressionSemantics(object):
         elif node_type == "binary":
             left, rest = ast
             left = left.value
-
             ops = rest[0::2]
             rights = rest[1::2]
 
@@ -122,24 +127,25 @@ class _ExpressionSemantics(object):
         else:
             raise Exception("Unknown node type '{}'".format(node_type))
 
-        # print("<--  {}".format(ast))
         if isinstance(result, _Result):
-            import pdb; pdb.set_trace()
+            raise Exception("Internal compiler error - "
+                            "unexpected _Result() object")
+            # Variable is already wrapped
+
         return _Result(result)
 
     def variable(self, ast):
-        # print("--- variable: {}".format(ast))
-        import pdb; pdb.set_trace()
-        value = ast
+        # Note: ast is expected to be a _Result() from the `reference` rule
+        value = ast.value
+        if not isinstance(ast, _Result):
+            import pdb; pdb.set_trace()
         result = self.compiler.compile_variable(self.context, value)
         return _Result(result)
 
     def reference(self, ast):
-        # print("--- ref: {}".format(ast))
         return _Result(Variable(ast))
 
     def function(self, ast):
-        # print("--- function: {}".format(ast))
         ref = ast.ref.value
         args = [arg.value for arg in ast.args or []]
         result = self.compiler.compile_function(self.context, ref, args)
@@ -147,7 +153,6 @@ class _ExpressionSemantics(object):
         return _Result(result)
 
     def NUMBER(self, ast):
-        # print("--- number: {}".format(ast))
         try:
             value = int(ast)
         except ValueError:
@@ -158,7 +163,6 @@ class _ExpressionSemantics(object):
         return _Result(result)
 
     def STRING(self, ast):
-        # print("--- string: {}".format(ast))
         # Strip the surrounding quotes
         value = str(ast[1:-1]).decode("string-escape")
 
@@ -207,7 +211,7 @@ class Compiler(object):
     def compile_variable(self, context, reference):
         """Compile variable `reference`. Default implementation returns
         `Variable` object."""
-        return Variable(reference)
+        return reference
 
     def compile_binary(self, context, operator, left, right):
         """Compile `operator` with operands `left` and `right`. Default
@@ -239,8 +243,18 @@ class Compiler(object):
         return obj
 
 
-if __name__ == "__main__":
-    compiler = Compiler()
-    result = compiler.compile("a is not b")
-    print("RESULT: ", result)
-    print("REPR  : ", repr(result))
+class IdentifierPreprocessor(Compiler):
+    def __init__(self):
+        super(IdentifierPreprocessor, self).__init__()
+
+        self.variables = set()
+        self.functions = set()
+
+    def compile_variable(self, context, variable):
+        self.variables.add(variable)
+        return variable
+
+    def compile_function(self, context, function, args):
+        self.functions.add(function)
+        return function
+

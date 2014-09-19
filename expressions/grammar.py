@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2014, 9, 19, 12, 59, 50, 4)
+__version__ = (2014, 9, 19, 16, 34, 11, 4)
 
 __all__ = [
     'ExpressionParser',
@@ -180,7 +180,7 @@ class ExpressionParser(Parser):
             with self._option():
                 self._function_()
             with self._option():
-                self._reference_()
+                self._variable_()
             with self._option():
                 with self._group():
                     self._token('(')
@@ -188,6 +188,10 @@ class ExpressionParser(Parser):
                     self.ast['@'] = self.last_node
                     self._token(')')
             self._error('no available options')
+
+    @graken()
+    def _variable_(self):
+        self._reference_()
 
     @graken()
     def _function_(self):
@@ -306,6 +310,9 @@ class ExpressionSemantics(object):
         return ast
 
     def atom(self, ast):
+        return ast
+
+    def variable(self, ast):
         return ast
 
     def function(self, ast):
