@@ -1,0 +1,42 @@
+arithmetic_expression = test $;
+test = or_test;
+or_test(binary) = and_test {'or' and_test };
+and_test(binary) = not_test {'and' not_test };
+not_test(unary) = 'not' not_test | comparison;
+comparison(binary) = or_expr { comparison_operator or_expr };
+
+or_expr(binary) = and_expr { '|' and_expr };
+and_expr(binary) = shift_expr { '&' shift_expr };
+shift_expr(binary) = arith_expr { ('<<' | '>>') arith_expr };
+
+arith_expr(binary) = term {('+' | '-') term} ;
+term(binary) = factor {('*' | '/' | '%' | '//') factor} ;
+factor(unary) = ('+' | '-' | '~') factor | power ;
+power = atom ['^' factor] ;
+
+atom = NUMBER 
+        | STRING 
+        | function
+        | reference
+        | ( '(' @:test ')' );
+
+function = ref:reference '(' [ args:arglist ] ')';
+arglist = { @+:argument ','} @+:argument;
+argument = test;
+
+reference = { @+:NAME '.'} @+:NAME;
+
+NUMBER = ?/[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/? ;
+STRING = ?/'[^'\\\r\n]*(?:\\.[^'\\\r\n]*)*'/? ;
+
+comparison_operator = ('==' | '!=' | '<' | '<=' | '>' | '>='
+                       | 'in' | 'is' );
+
+(* Allow any unicode character to be an identifier *)
+NAME = ?/\w+/?;
+
+(*TODO: Missing operators and features:
+
+ – array subscript '[' low [ ':' high ] ']'
+ – not in, is not
+*)
