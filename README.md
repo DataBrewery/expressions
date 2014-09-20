@@ -188,13 +188,21 @@ The following compiler is included in the library:
 Use:
 
 ```python
-    preproc = IdentifierPreprocessor()
-    preproc.compile("a + b")
-    preproc.compile("sum(amount)")
+>>> preproc = IdentifierPreprocessor()
+>>> preproc.compile("a + b")
+>>> preproc.compile("sum(amount)")
 ```
 
 The `preproc.variables` will contain *Variable* objects for `a`, `b` and
-`amount`, the `proproc.functions` will contain one *Variable* object `sum`.
+`amount`, the `proproc.functions` will contain one *Variable* object `sum`:
+
+```python
+>>> print(preproc.variables)
+{Variable(amount), Variable(b), Variable(a)}
+>>> print(preproc.functions)
+{Variable(sum)}
+```
+
 Note that the *Variable* object represents any named object reference – both
 variables and functions.
 
