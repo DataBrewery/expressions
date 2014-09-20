@@ -185,6 +185,19 @@ The following compiler is included in the library:
             return function
 ```
 
+Use:
+
+```python
+    preproc = IdentifierPreprocessor()
+    preproc.compile("a + b")
+    preproc.compile("sum(amount)")
+```
+
+The `preproc.variables` will contain *Variable* objects for `a`, `b` and
+`amount`, the `proproc.functions` will contain one *Variable* object `sum`.
+Note that the *Variable* object represents any named object reference – both
+variables and functions.
+
 Classes
 =======
 
