@@ -24,6 +24,22 @@ Expressions sources are available at [Github](https://github.com/DataBrewery/exp
 
 Works with Python 2.7 and Python 3.3. Uses [Grako](https://bitbucket.org/apalala/grako).
 
+Quick Start
+-----------
+
+```python
+from expressions import Compiler
+
+compiler = Compiler()
+result = compiler.compile("min(a, b) * 2")
+```
+
+Result from the default (non-extended) compiler will be abstract semantic
+graph containing nodes *Literal*, *Variable*, *Function*, *Binary* and *Unary*
+operators. Subclasses of `Compiler` can yield different outputs by
+implementing just few simple methods which represent semantic graph nodes
+(same as the objects).
+
 Example
 -------
 
@@ -68,6 +84,10 @@ Try to compile and execute the expression:
 This will fail, because only `a` and `b` are allowed, `c` is not:
 
     result = compiler.compile("a + c", allowed_variables)
+
+
+See the examples source directory for more examples such as very simplified
+expression-to-SQLAlchemy compiler.
 
 Syntax
 ======
