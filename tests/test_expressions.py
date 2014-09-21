@@ -118,3 +118,13 @@ class CustomCompilersTestCase(unittest.TestCase):
 
         self.assertEqual(functions, set(["foo", "bar"]))
         self.assertEqual(variables, set(["a", "b", "c"]))
+
+    def test_preprocessor_unique(self):
+        pp = IdentifierPreprocessor()
+        pp.compile("foo(a,a,b,b,c,c,c,c) + foo(a,b,c)")
+
+        functions = sorted(list(f.name for f in pp.functions))
+        variables = sorted(list(v.name for v in pp.variables))
+
+        self.assertEqual(functions, ["foo"])
+        self.assertEqual(variables, ["a", "b", "c"])

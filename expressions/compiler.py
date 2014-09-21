@@ -5,6 +5,7 @@ from __future__ import print_function
 
 from .grammar import ExpressionParser, ExpressionSemantics
 from grako.exceptions import FailedSemantics
+from . import compat
 
 __all__ = [
         "Compiler",
@@ -48,6 +49,16 @@ class Variable(Node):
 
     def __repr__(self):
         return "Variable({.name})".format(self)
+
+    def __eq__(self, other):
+        if not isinstance(other, Variable):
+            return NotImplemented
+        else:
+            return self.name == other.name \
+                    and self.reference == other.reference
+
+    def __hash__(self):
+        return hash(self.name)
 
 
 class UnaryOperator(Node):
@@ -164,7 +175,7 @@ class _ExpressionSemantics(object):
 
     def STRING(self, ast):
         # Strip the surrounding quotes
-        value = str(ast[1:-1]).decode("string-escape")
+        value = compat.unicode_escape(compat.text_type(ast[1:-1]))
 
         result = self.compiler.compile_literal(self.context, value)
         return _Result(result)
