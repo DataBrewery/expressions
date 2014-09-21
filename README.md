@@ -4,6 +4,9 @@ Expressions
 Arithmetic expression parser library.  Embed customized expression evaluation
 into your application or library. Example uses:
 
+* Safely process an expression entered through a web application,
+  for example some formula to be plotted. The library allows safe translation
+  of such expression without exposing any application's internals
 * precompiler that checks for allowed and denied identifiers in an expression
 * have a common expression language through your application regardless of the
   backend languages
@@ -217,6 +220,23 @@ The following classes are provided by the library:
   `variables` and `functions` containing list of `Variable` objects collected
   from the compiled expression. Can be used for validation or preparation of
   variables
+
+
+What Expressions is *not*
+-------------------------
+
+* This is *not* a Python expression compiler. The grammar is based on very
+  basic SQL grammar and few other simple SQL grammar features might be added in
+  the future. There is no SQL compatibility guaranteed though. It is not meant
+  to be a rich expression, but a small subset of quite common expressions to
+  allow easy translation to other languages or object structures. Main use is
+  arithmetic expression support for a modular application with different
+  backends
+
+* It is *not* an expression of an object-oriented language – it does not have
+  access to object attributes – the '.' dot operator is just an attribute name
+  concatenation. The compiler receives full object reference as a string and
+  as a list of reference components.
 
 
 License
