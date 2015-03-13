@@ -9,12 +9,13 @@ from . import compat
 
 __all__ = [
         "Compiler",
-        "IdentifierPreprocessor",
+        "ExpressionInspector",
         "Variable",
         "Function",
         "BinaryOperator",
         "UnaryOperator",
-        "Node"
+        "Node",
+        "inspect_variables"
     ]
 
 
@@ -254,18 +255,28 @@ class Compiler(object):
         return obj
 
 
-class IdentifierPreprocessor(Compiler):
+class ExpressionInspector(Compiler):
+    """Preprocesses an expression. Returns tuple of sets (`variables`,
+    `functions`)"""
     def __init__(self):
-        super(IdentifierPreprocessor, self).__init__()
+        super(ExpressionInspector, self).__init__()
 
         self.variables = set()
         self.functions = set()
 
     def compile_variable(self, context, variable):
-        self.variables.add(variable)
+        self.variables.add(variable.name)
         return variable
 
     def compile_function(self, context, function, args):
-        self.functions.add(function)
+        self.functions.add(function.name)
         return function
 
+    def finalize(self, context, obj):
+        return (self.variables, self.functions)
+
+def inspect_variables(text):
+    """Return set of variables in expression `text`"""
+    inspector = ExpressionInspector()
+    inspector.compile(text)
+    return inspector.variables
