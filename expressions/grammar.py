@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 6, 29, 20, 11, 40, 0)
+__version__ = (2015, 6, 29, 20, 16, 29, 0)
 
 __all__ = [
     'ExpressionParser',
@@ -252,13 +252,13 @@ class ExpressionParser(Parser):
                 with self._option():
                     self._token('!=')
                 with self._option():
-                    self._token('<')
-                with self._option():
                     self._token('<=')
                 with self._option():
-                    self._token('>')
+                    self._token('<')
                 with self._option():
                     self._token('>=')
+                with self._option():
+                    self._token('>')
                 with self._option():
                     self._token('in')
                 with self._option():

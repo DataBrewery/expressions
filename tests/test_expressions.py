@@ -90,6 +90,30 @@ class CompilerTestCase(unittest.TestCase):
         self.assertEqual(result.left, 1)
         self.assertEqual(result.right, 2)
 
+        result = compiler.compile("1 = 2")
+        self.assertIsInstance(result, BinaryOperator)
+        self.assertEqual(result.operator, "=")
+        self.assertEqual(result.left, 1)
+        self.assertEqual(result.right, 2)
+
+        result = compiler.compile("1 != 2")
+        self.assertIsInstance(result, BinaryOperator)
+        self.assertEqual(result.operator, "!=")
+        self.assertEqual(result.left, 1)
+        self.assertEqual(result.right, 2)
+
+        result = compiler.compile("1 >= 2")
+        self.assertIsInstance(result, BinaryOperator)
+        self.assertEqual(result.operator, ">=")
+        self.assertEqual(result.left, 1)
+        self.assertEqual(result.right, 2)
+
+        result = compiler.compile("1 <= 2")
+        self.assertIsInstance(result, BinaryOperator)
+        self.assertEqual(result.operator, "<=")
+        self.assertEqual(result.left, 1)
+        self.assertEqual(result.right, 2)
+
     @unittest.skip("later")
     def test_validating_compiler(self):
         compiler = ValidatingCompiler()
