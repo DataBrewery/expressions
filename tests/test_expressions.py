@@ -1,6 +1,6 @@
 # -*- encoding: utf8 -*-
 import unittest
-from expressions import Compiler, IdentifierPreprocessor
+from expressions import Compiler
 from expressions import Variable, Function, UnaryOperator, BinaryOperator
 
 class ValidatingCompiler(Compiler):
@@ -108,7 +108,26 @@ class CompilerTestCase(unittest.TestCase):
         result = compiler.compile("f(x, y)")
         self.assertEqual("CALL f(x, y)", result)
 
+class IdentifierPreprocessor(Compiler):
+    """
+    CustomCompiler, just for testing
+    """
+    def __init__(self):
+        super(IdentifierPreprocessor, self).__init__()
+
+        self.variables = set()
+        self.functions = set()
+
+    def compile_variable(self, context, variable):
+        self.variables.add(variable)
+        return variable
+
+    def compile_function(self, context, function, args):
+        self.functions.add(function)
+        return function
+
 class CustomCompilersTestCase(unittest.TestCase):
+
     def test_preprocessor(self):
         pp = IdentifierPreprocessor()
         pp.compile("foo(a + b) * bar(b + c)")
