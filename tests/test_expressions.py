@@ -147,3 +147,6 @@ class CustomCompilersTestCase(unittest.TestCase):
 
         self.assertEqual(functions, ["foo"])
         self.assertEqual(variables, ["a", "b", "c"])
+
+if __name__ == '__main__':
+    unittest.main()
