@@ -1,6 +1,6 @@
 # -*- encoding: utf8 -*-
 import unittest
-from expressions import Compiler, IdentifierPreprocessor
+from expressions import Compiler
 from expressions import Variable, Function, UnaryOperator, BinaryOperator
 
 class ValidatingCompiler(Compiler):
@@ -90,6 +90,30 @@ class CompilerTestCase(unittest.TestCase):
         self.assertEqual(result.left, 1)
         self.assertEqual(result.right, 2)
 
+        result = compiler.compile("1 = 2")
+        self.assertIsInstance(result, BinaryOperator)
+        self.assertEqual(result.operator, "=")
+        self.assertEqual(result.left, 1)
+        self.assertEqual(result.right, 2)
+
+        result = compiler.compile("1 != 2")
+        self.assertIsInstance(result, BinaryOperator)
+        self.assertEqual(result.operator, "!=")
+        self.assertEqual(result.left, 1)
+        self.assertEqual(result.right, 2)
+
+        result = compiler.compile("1 >= 2")
+        self.assertIsInstance(result, BinaryOperator)
+        self.assertEqual(result.operator, ">=")
+        self.assertEqual(result.left, 1)
+        self.assertEqual(result.right, 2)
+
+        result = compiler.compile("1 <= 2")
+        self.assertIsInstance(result, BinaryOperator)
+        self.assertEqual(result.operator, "<=")
+        self.assertEqual(result.left, 1)
+        self.assertEqual(result.right, 2)
+
     @unittest.skip("later")
     def test_validating_compiler(self):
         compiler = ValidatingCompiler()
@@ -108,7 +132,26 @@ class CompilerTestCase(unittest.TestCase):
         result = compiler.compile("f(x, y)")
         self.assertEqual("CALL f(x, y)", result)
 
+class IdentifierPreprocessor(Compiler):
+    """
+    CustomCompiler, just for testing
+    """
+    def __init__(self):
+        super(IdentifierPreprocessor, self).__init__()
+
+        self.variables = set()
+        self.functions = set()
+
+    def compile_variable(self, context, variable):
+        self.variables.add(variable)
+        return variable
+
+    def compile_function(self, context, function, args):
+        self.functions.add(function)
+        return function
+
 class CustomCompilersTestCase(unittest.TestCase):
+
     def test_preprocessor(self):
         pp = IdentifierPreprocessor()
         pp.compile("foo(a + b) * bar(b + c)")
@@ -128,3 +171,6 @@ class CustomCompilersTestCase(unittest.TestCase):
 
         self.assertEqual(functions, ["foo"])
         self.assertEqual(variables, ["a", "b", "c"])
+
+if __name__ == '__main__':
+    unittest.main()

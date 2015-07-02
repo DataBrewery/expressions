@@ -21,6 +21,8 @@ setup(
         'Topic :: Utilities'
     ],
 
+    install_requires='grako==3.6.1',
+
     test_suite = "tests",
 
     # metadata for upload to PyPI

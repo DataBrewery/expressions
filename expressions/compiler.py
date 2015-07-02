@@ -149,8 +149,7 @@ class _ExpressionSemantics(object):
     def variable(self, ast):
         # Note: ast is expected to be a _Result() from the `reference` rule
         value = ast.value
-        if not isinstance(ast, _Result):
-            import pdb; pdb.set_trace()
+        assert isinstance(ast, _Result)
         result = self.compiler.compile_variable(self.context, value)
         return _Result(result)
 

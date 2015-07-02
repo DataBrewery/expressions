@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2014, 9, 19, 16, 34, 11, 4)
+__version__ = (2015, 6, 29, 20, 16, 29, 0)
 
 __all__ = [
     'ExpressionParser',
@@ -25,10 +25,13 @@ __all__ = [
 
 
 class ExpressionParser(Parser):
-    def __init__(self, whitespace=None, nameguard=True, **kwargs):
+    def __init__(self, whitespace=None, nameguard=None, **kwargs):
         super(ExpressionParser, self).__init__(
             whitespace=whitespace,
             nameguard=nameguard,
+            comments_re=None,
+            eol_comments_re=None,
+            ignorecase=None,
             **kwargs
         )
 
@@ -139,9 +142,7 @@ class ExpressionParser(Parser):
                         self._token('/')
                     with self._option():
                         self._token('%')
-                    with self._option():
-                        self._token('//')
-                    self._error('expecting one of: % * / //')
+                    self._error('expecting one of: % * /')
             self._factor_()
         self._closure(block0)
 
@@ -247,22 +248,22 @@ class ExpressionParser(Parser):
         with self._group():
             with self._choice():
                 with self._option():
-                    self._token('==')
+                    self._token('=')
                 with self._option():
                     self._token('!=')
                 with self._option():
-                    self._token('<')
-                with self._option():
                     self._token('<=')
                 with self._option():
-                    self._token('>')
+                    self._token('<')
                 with self._option():
                     self._token('>=')
+                with self._option():
+                    self._token('>')
                 with self._option():
                     self._token('in')
                 with self._option():
                     self._token('is')
-                self._error('expecting one of: != < <= == > >= in is')
+                self._error('expecting one of: != < <= = > >= in is')
 
     @graken()
     def _NAME_(self):
@@ -340,7 +341,7 @@ class ExpressionSemantics(object):
         return ast
 
 
-def main(filename, startrule, trace=False, whitespace=None):
+def main(filename, startrule, trace=False, whitespace=None, nameguard=None):
     import json
     with open(filename) as f:
         text = f.read()
@@ -350,7 +351,8 @@ def main(filename, startrule, trace=False, whitespace=None):
         startrule,
         filename=filename,
         trace=trace,
-        whitespace=whitespace)
+        whitespace=whitespace,
+        nameguard=nameguard)
     print('AST:')
     print(ast)
     print()
@@ -374,6 +376,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Simple parser for Expression.")
     parser.add_argument('-l', '--list', action=ListRules, nargs=0,
                         help="list all rules and exit")
+    parser.add_argument('-n', '--no-nameguard', action='store_true',
+                        dest='no_nameguard',
+                        help="disable the 'nameguard' feature")
     parser.add_argument('-t', '--trace', action='store_true',
                         help="output trace information")
     parser.add_argument('-w', '--whitespace', type=str, default=string.whitespace,
@@ -387,5 +392,6 @@ if __name__ == '__main__':
         args.file,
         args.startrule,
         trace=args.trace,
-        whitespace=args.whitespace
+        whitespace=args.whitespace,
+        nameguard=not args.no_nameguard
     )
