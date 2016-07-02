@@ -1,6 +1,6 @@
 # -*- encoding: utf8 -*-
 import unittest
-from expressions import Compiler, IdentifierPreprocessor
+from expressions import Compiler, ExpressionInspector
 from expressions import Variable, Function, UnaryOperator, BinaryOperator
 
 class ValidatingCompiler(Compiler):
@@ -76,7 +76,7 @@ class CompilerTestCase(unittest.TestCase):
         self.assertIsInstance(result, Function)
         self.assertEqual(result.args, [10, 20, 30])
 
-    def test_operator(self):
+    def test_unary(self):
         compiler = Compiler()
 
         result = compiler.compile("+1")
@@ -84,11 +84,14 @@ class CompilerTestCase(unittest.TestCase):
         self.assertEqual(result.operator, "+")
         self.assertEqual(result.operand, 1)
 
-        result = compiler.compile("1 and 2")
+    def test_binary(self):
+        compiler = Compiler()
+
+        result = compiler.compile("101 + 202")
         self.assertIsInstance(result, BinaryOperator)
-        self.assertEqual(result.operator, "and")
-        self.assertEqual(result.left, 1)
-        self.assertEqual(result.right, 2)
+        self.assertEqual(result.operator, "+")
+        self.assertEqual(result.left, 101)
+        self.assertEqual(result.right, 202)
 
     @unittest.skip("later")
     def test_validating_compiler(self):
@@ -110,21 +113,21 @@ class CompilerTestCase(unittest.TestCase):
 
 class CustomCompilersTestCase(unittest.TestCase):
     def test_preprocessor(self):
-        pp = IdentifierPreprocessor()
+        pp = ExpressionInspector()
         pp.compile("foo(a + b) * bar(b + c)")
 
-        functions = set(f.name for f in pp.functions)
-        variables = set(v.name for v in pp.variables)
+        functions = set(pp.functions)
+        variables = set(pp.variables)
 
         self.assertEqual(functions, set(["foo", "bar"]))
         self.assertEqual(variables, set(["a", "b", "c"]))
 
     def test_preprocessor_unique(self):
-        pp = IdentifierPreprocessor()
+        pp = ExpressionInspector()
         pp.compile("foo(a,a,b,b,c,c,c,c) + foo(a,b,c)")
 
-        functions = sorted(list(f.name for f in pp.functions))
-        variables = sorted(list(v.name for v in pp.variables))
+        functions = sorted(pp.functions)
+        variables = sorted(pp.variables)
 
         self.assertEqual(functions, ["foo"])
         self.assertEqual(variables, ["a", "b", "c"])

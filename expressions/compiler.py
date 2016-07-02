@@ -121,10 +121,8 @@ class _ExpressionSemantics(object):
         elif node_type == "binary":
             left, rest = ast
             left = left.value
-            ops = rest[0::2]
-            rights = rest[1::2]
 
-            for op, right in zip(ops, rights):
+            for op, right in rest:
                 # Get the object's value
                 right = right.value
 

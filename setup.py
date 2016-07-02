@@ -1,9 +1,11 @@
 import sys
 from setuptools import setup, find_packages
 
+requirements = ['grako>=3.9.3']
+
 setup(
     name = "expressions",
-    version = "0.2.2",
+    version = "0.2.3",
 
     packages = find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     package_data = {
@@ -20,6 +22,8 @@ setup(
         'Topic :: Scientific/Engineering',
         'Topic :: Utilities'
     ],
+
+    install_requires = requirements,
 
     test_suite = "tests",
 
