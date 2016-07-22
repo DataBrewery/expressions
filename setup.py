@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "expressions",
-    version = "0.2.3RC",
+    version = "0.2.3",
 
     packages = find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     package_data = {
