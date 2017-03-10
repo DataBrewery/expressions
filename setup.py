@@ -5,7 +5,7 @@ requirements = ['grako>=3.9.3']
 
 setup(
     name = "expressions",
-    version = "0.2.3",
+    version = "0.2.4",
 
     packages = find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     package_data = {
