@@ -247,22 +247,22 @@ class ExpressionParser(Parser):
         with self._group():
             with self._choice():
                 with self._option():
-                    self._token('==')
+                    self._token('=')
                 with self._option():
                     self._token('!=')
                 with self._option():
-                    self._token('<')
-                with self._option():
                     self._token('<=')
                 with self._option():
-                    self._token('>')
+                    self._token('<')
                 with self._option():
                     self._token('>=')
+                with self._option():
+                    self._token('>')
                 with self._option():
                     self._token('in')
                 with self._option():
                     self._token('is')
-                self._error('expecting one of: != < <= == > >= in is')
+                self._error('expecting one of: != < <= = > >= in is')
 
     @graken()
     def _NAME_(self):
